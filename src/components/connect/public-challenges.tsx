@@ -29,13 +29,20 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Loader2, Search, UsersIcon, CalendarIcon } from "lucide-react";
+import {
+  Loader2,
+  Search,
+  UsersIcon,
+  CalendarIcon,
+  Sparkles,
+} from "lucide-react"; // <-- Tambahkan Sparkles di sini
 import { format, isPast } from "date-fns";
-import { toast } from "sonner";
+import { toast } from "sonner"; // <-- Gunakan import dari sonner
 import { Progress } from "@/components/ui/progress";
 import { JoinChallengeModal } from "@/components/challenges/join-challenge-modal";
 import Link from "next/link";
 
+// Tambahkan properti opsional 'matchScore', 'bio', dan 'commonInterests' ke interface Challenge
 interface Challenge {
   id: string;
   title: string;
@@ -50,15 +57,28 @@ interface Challenge {
   milestones: any[];
   creatorName?: string;
   creatorImage?: string;
+  matchScore?: number;
+  bio?: string;
+  commonInterests?: string[];
 }
 
+// Tambahkan fungsi helper getMatchDescription
+const getMatchDescription = (score: number): string => {
+  if (score >= 80) return "Exceptional Match";
+  if (score >= 60) return "Great Match";
+  if (score >= 40) return "Good Match";
+  if (score >= 20) return "Fair Match";
+  return "Basic Match";
+};
+
+// Ubah parameter fetchChallenges agar menerima startAfterDoc?: QueryDocumentSnapshot
 export function PublicChallenges() {
   const { currentUser } = useAuth();
   const [loading, setLoading] = useState(true);
   const [challenges, setChallenges] = useState<Challenge[]>([]);
-  const [lastVisible, setLastVisible] = useState<QueryDocumentSnapshot | null>(
-    null
-  );
+  const [lastVisible, setLastVisible] = useState<
+    QueryDocumentSnapshot | undefined
+  >(undefined);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -70,7 +90,7 @@ export function PublicChallenges() {
     }
   }, [currentUser]);
 
-  const fetchChallenges = async (startAfterDoc = null) => {
+  const fetchChallenges = async (startAfterDoc?: QueryDocumentSnapshot) => {
     if (!currentUser) return;
 
     try {
@@ -117,25 +137,28 @@ export function PublicChallenges() {
       }
 
       const challengesWithCreators = await Promise.all(
-        querySnapshot.docs.map(async (doc) => {
-          const data = doc.data() as Challenge;
-          const userDoc = await getDoc(
-            doc.ref.firestore.doc(`users/${data.userId}`)
-          );
-
+        querySnapshot.docs.map(async (docSnap) => {
+          const data = docSnap.data() as Challenge;
+          // Perbaiki penggunaan doc.ref.firestore.doc(...) dengan memanggil doc(db, ...)
+          const userDoc = await getDoc(doc(db, "users", data.userId));
           if (userDoc.exists()) {
-            const userData = userDoc.data();
+            const userData = userDoc.data() as {
+              username?: string;
+              profileImage?: string;
+            };
+            const { id: _ignored, ...rest } = data;
             return {
-              id: doc.id,
-              ...data,
+              id: docSnap.id,
+              ...rest,
               creatorName: userData.username || "Unknown User",
               creatorImage: userData.profileImage || "",
             };
           }
 
+          const { id: _ignored, ...rest } = data;
           return {
-            id: doc.id,
-            ...data,
+            id: docSnap.id,
+            ...rest,
             creatorName: "Unknown User",
             creatorImage: "",
           };
@@ -242,12 +265,12 @@ export function PublicChallenges() {
   const filteredChallenges = challenges.filter((challenge) => {
     if (!searchQuery) return true;
 
-    const query = searchQuery.toLowerCase();
+    const queryText = searchQuery.toLowerCase();
     return (
-      challenge.title.toLowerCase().includes(query) ||
-      challenge.description.toLowerCase().includes(query) ||
-      challenge.category.toLowerCase().includes(query) ||
-      challenge.creatorName?.toLowerCase().includes(query)
+      challenge.title.toLowerCase().includes(queryText) ||
+      challenge.description.toLowerCase().includes(queryText) ||
+      challenge.category.toLowerCase().includes(queryText) ||
+      challenge.creatorName?.toLowerCase().includes(queryText)
     );
   });
 
@@ -322,6 +345,7 @@ export function PublicChallenges() {
                           <CardTitle className="text-base">
                             {challenge.creatorName}
                           </CardTitle>
+                          {/* Jika properti goal tidak ada, hilangkan baris berikut atau tambahkan ke interface */}
                           <CardDescription>
                             {challenge.goal || "No goal specified"}
                           </CardDescription>
@@ -350,8 +374,11 @@ export function PublicChallenges() {
                       {getMatchDescription(challenge.matchScore || 0)}
                     </div>
 
+                    {/* Jika properti bio tidak ada, gunakan description sebagai gantinya */}
                     <p className="text-sm line-clamp-2 min-h-[40px] mb-2">
-                      {challenge.bio || "No bio available"}
+                      {challenge.bio ||
+                        challenge.description ||
+                        "No bio available"}
                     </p>
 
                     {challenge.commonInterests &&
@@ -362,7 +389,7 @@ export function PublicChallenges() {
                           </div>
                           <div className="flex flex-wrap gap-1">
                             {challenge.commonInterests.map(
-                              (interest, index) => (
+                              (interest: string, index: number) => (
                                 <Badge
                                   key={index}
                                   variant="outline"
@@ -379,11 +406,11 @@ export function PublicChallenges() {
                     <div className="flex flex-wrap gap-1 mt-2">
                       {challenge.interests
                         .filter(
-                          (interest) =>
+                          (interest: string) =>
                             !challenge.commonInterests?.includes(interest)
                         )
                         .slice(0, 3)
-                        .map((interest, index) => (
+                        .map((interest: string, index: number) => (
                           <Badge
                             key={index}
                             variant="secondary"
