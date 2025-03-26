@@ -27,6 +27,8 @@ import { db, storage } from "@/lib/firebase/config";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Loader2 } from "lucide-react";
+import { uploadImage } from "@/lib/firebase/upload-service";
+import { toast } from "sonner";
 
 const formSchema = z.object({
   username: z
@@ -106,18 +108,39 @@ export function ProfileForm() {
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || !e.target.files[0] || !currentUser) return;
+
     const file = e.target.files[0];
-    const fileRef = ref(storage, `profile-images/${currentUser.uid}`);
+
     try {
       setUploadingImage(true);
-      await uploadBytes(fileRef, file);
-      const imageUrl = await getDownloadURL(fileRef);
+
+      const result = await uploadImage(
+        file,
+        `profile-images/${currentUser.uid}`,
+        { useCompression: true }
+      );
 
       const userRef = doc(db, "users", currentUser.uid);
-      await updateDoc(userRef, { profileImage: imageUrl });
-      setProfileImage(imageUrl);
+      await updateDoc(userRef, {
+        profileImage: result.url,
+      });
+
+      setProfileImage(result.url);
+
+      toast.success(
+        `Image compressed from ${(result.originalSize / 1024).toFixed(
+          1
+        )}KB to ${(result.compressedSize / 1024).toFixed(1)}KB`,
+        { description: "Profile image updated" }
+      );
     } catch (error) {
       console.error("Error uploading image:", error);
+      toast.error(
+        "There was a problem uploading your image. Please try again.",
+        {
+          description: "Upload failed",
+        }
+      );
     } finally {
       setUploadingImage(false);
     }
