@@ -16,8 +16,9 @@ import {
   User,
   GoogleAuthProvider,
   signInWithPopup,
+  sendPasswordResetEmail,
 } from "firebase/auth";
-import { doc, setDoc, getDoc } from "firebase/firestore";
+import { doc, setDoc, getDoc, serverTimestamp } from "firebase/firestore";
 
 interface AuthContextType {
   currentUser: User | null;
@@ -26,6 +27,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   loginWithGoogle: () => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -44,7 +46,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await setDoc(doc(db, "users", userCredential.user.uid), {
       username,
       email,
-      createdAt: new Date(),
+      createdAt: serverTimestamp(),
       bio: "",
       profileImage: "",
       interests: [],
@@ -55,10 +57,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   function login(email: string, password: string): Promise<void> {
     return signInWithEmailAndPassword(auth, email, password).then(() => {});
   }
+  //   function login(email: string, password: string) {
+  //     return signInWithEmailAndPassword(auth, email, password);
+  //   }
 
-  async function loginWithGoogle(): Promise<void> {
+  async function loginWithGoogle() {
     const provider = new GoogleAuthProvider();
-    await signInWithPopup(auth, provider);
+    const result = await signInWithPopup(auth, provider);
+    const user = result.user;
+
+    const userRef = doc(db, "users", user.uid);
+    const userDoc = await getDoc(userRef);
+
+    if (!userDoc.exists()) {
+      const username = user.displayName?.split(" ")[0] || "User";
+
+      await setDoc(userRef, {
+        username,
+        email: user.email,
+        profileImage: user.photoURL || "",
+        createdAt: serverTimestamp(),
+        bio: "",
+        interests: [],
+        goals: [],
+      });
+    }
+  }
+
+  function resetPassword(email: string): Promise<void> {
+    return sendPasswordResetEmail(auth, email);
   }
 
   function logout() {
@@ -80,6 +107,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     login,
     logout,
     loginWithGoogle,
+    resetPassword,
   };
 
   return (
