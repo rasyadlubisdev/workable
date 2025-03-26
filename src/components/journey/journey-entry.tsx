@@ -1,4 +1,5 @@
 "use client";
+
 import { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -23,18 +24,25 @@ import { Loader2, Image as ImageIcon } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
 
 const formSchema = z.object({
-  title: z.string().min(3, { message: "Title must be at least 3 characters." }),
-  content: z
-    .string()
-    .min(10, { message: "Content must be at least 10 characters." }),
+  title: z.string().min(3, {
+    message: "Title must be at least 3 characters.",
+  }),
+  content: z.string().min(10, {
+    message: "Content must be at least 10 characters.",
+  }),
   tags: z.string().optional(),
 });
 
-export function JourneyEntryForm() {
+interface JourneyEntryFormProps {
+  onJourneyCreated?: () => void;
+}
+
+export function JourneyEntryForm({ onJourneyCreated }: JourneyEntryFormProps) {
   const { currentUser } = useAuth();
   const [loading, setLoading] = useState(false);
   const [imageURL, setImageURL] = useState<string | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -46,6 +54,7 @@ export function JourneyEntryForm() {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     if (!currentUser) return;
+
     try {
       setLoading(true);
 
@@ -64,6 +73,10 @@ export function JourneyEntryForm() {
 
       form.reset();
       setImageURL(null);
+
+      if (onJourneyCreated) {
+        onJourneyCreated();
+      }
     } catch (error) {
       console.error("Error creating journey entry:", error);
     } finally {
@@ -73,9 +86,11 @@ export function JourneyEntryForm() {
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || !e.target.files[0] || !currentUser) return;
+
     const file = e.target.files[0];
     const fileId = uuidv4();
     const fileRef = ref(storage, `journey-images/${currentUser.uid}/${fileId}`);
+
     try {
       setUploadingImage(true);
       await uploadBytes(fileRef, file);
@@ -112,6 +127,7 @@ export function JourneyEntryForm() {
                 </FormItem>
               )}
             />
+
             <FormField
               control={form.control}
               name="content"
@@ -129,6 +145,7 @@ export function JourneyEntryForm() {
                 </FormItem>
               )}
             />
+
             <FormField
               control={form.control}
               name="tags"
@@ -145,6 +162,7 @@ export function JourneyEntryForm() {
                 </FormItem>
               )}
             />
+
             <div className="space-y-4">
               <div className="flex items-center gap-4">
                 <Input
@@ -162,22 +180,23 @@ export function JourneyEntryForm() {
                 >
                   {uploadingImage ? (
                     <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />{" "}
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       Uploading...
                     </>
                   ) : (
                     <>
-                      <ImageIcon className="mr-2 h-4 w-4" /> Add Image
+                      <ImageIcon className="mr-2 h-4 w-4" />
+                      Add Image
                     </>
                   )}
                 </Button>
                 {imageURL && (
                   <span className="text-sm text-muted-foreground">
-                    {" "}
-                    Image uploaded successfully{" "}
+                    Image uploaded successfully
                   </span>
                 )}
               </div>
+
               {imageURL && (
                 <div className="rounded-md overflow-hidden max-h-[200px] w-full">
                   <img
@@ -188,6 +207,7 @@ export function JourneyEntryForm() {
                 </div>
               )}
             </div>
+
             <Button
               type="submit"
               className="w-full"
@@ -195,7 +215,8 @@ export function JourneyEntryForm() {
             >
               {loading ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
                 </>
               ) : (
                 "Post Update"
