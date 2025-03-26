@@ -22,6 +22,8 @@ import { db, storage } from "@/lib/firebase/config";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import { Loader2, Image as ImageIcon } from "lucide-react";
 import { v4 as uuidv4 } from "uuid";
+import { uploadImage } from "@/lib/firebase/upload-service";
+import { toast } from "sonner";
 
 const formSchema = z.object({
   title: z.string().min(3, {
@@ -88,16 +90,27 @@ export function JourneyEntryForm({ onJourneyCreated }: JourneyEntryFormProps) {
     if (!e.target.files || !e.target.files[0] || !currentUser) return;
 
     const file = e.target.files[0];
-    const fileId = uuidv4();
-    const fileRef = ref(storage, `journey-images/${currentUser.uid}/${fileId}`);
 
     try {
       setUploadingImage(true);
-      await uploadBytes(fileRef, file);
-      const url = await getDownloadURL(fileRef);
-      setImageURL(url);
+
+      const result = await uploadImage(
+        file,
+        `journey-images/${currentUser.uid}`,
+        { useCompression: true }
+      );
+
+      setImageURL(result.url);
+
+      toast.success("Image uploaded", {
+        description: `Ready to use in your journey update`,
+      });
     } catch (error) {
       console.error("Error uploading image:", error);
+      toast.error("Upload failed", {
+        description:
+          "There was a problem uploading your image. Please try again.",
+      });
     } finally {
       setUploadingImage(false);
     }
