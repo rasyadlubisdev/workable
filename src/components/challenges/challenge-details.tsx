@@ -296,6 +296,33 @@ export function ChallengeDetails({
                 <Progress value={calculateProgress()} className="h-2" />
               </div>
             </div>
+
+            {currentUser && (
+              <div className="border rounded-md p-4 mt-4">
+                <h3 className="text-sm font-semibold mb-2">Invitation Code</h3>
+                <div className="flex items-center gap-2">
+                  <code className="bg-secondary px-2 py-1 rounded text-sm font-mono">
+                    {challenge.invitationCode}
+                  </code>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      navigator.clipboard.writeText(challenge.invitationCode);
+                      toast("Invitation code copied to clipboard", {
+                        description: "Copied!",
+                      });
+                    }}
+                  >
+                    Copy
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Share this code with friends to invite them to join your
+                  challenge
+                </p>
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="milestones" className="space-y-4 mt-4">
