@@ -44,66 +44,27 @@ export default function ChatPage({ params }: { params: { chatId: string } }) {
 
     setLoading(true);
 
-    const fetchChatData = async () => {
-      try {
-        const chatRef = doc(db, "chats", chatId);
-        const chatDoc = await getDoc(chatRef);
-
-        if (!chatDoc.exists()) {
-          router.push("/messages");
-          return;
-        }
-
-        const chatData = chatDoc.data() as Chat;
-
-        if (!chatData.participants.includes(currentUser.uid)) {
-          router.push("/messages");
-          return;
-        }
-
-        setChat(chatData);
-
-        const otherUserId = chatData.participants.find(
-          (id) => id !== currentUser.uid
-        );
-        if (otherUserId) {
-          const userRef = doc(db, "users", otherUserId);
-          const userDoc = await getDoc(userRef);
-
-          if (userDoc.exists()) {
-            setOtherUser(userDoc.data());
+    const fetchChatData = () => {
+      const chatRef = doc(db, "chats", chatId);
+      const unsubscribe = onSnapshot(chatRef, (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data() as Chat;
+          if (data.messages) {
+            const sortedMessages = [...data.messages].sort((a, b) => {
+              if (!a.createdAt || !b.createdAt) return 0;
+              return a.createdAt.seconds - b.createdAt.seconds;
+            });
+            setMessages(sortedMessages);
+            markMessagesAsRead(data.messages);
           }
         }
-
-        const unsubscribe = onSnapshot(doc(db, "chats", chatId), (doc) => {
-          if (doc.exists()) {
-            const data = doc.data() as Chat;
-            if (data.messages) {
-              const sortedMessages = [...data.messages].sort((a, b) => {
-                if (!a.createdAt || !b.createdAt) return 0;
-                return a.createdAt.seconds - b.createdAt.seconds;
-              });
-
-              setMessages(sortedMessages);
-
-              markMessagesAsRead(data.messages);
-            }
-          }
-        });
-
-        setLoading(false);
-        return unsubscribe;
-      } catch (error) {
-        console.error("Error fetching chat:", error);
-        setLoading(false);
-      }
+      });
+      return unsubscribe;
     };
 
     const unsubscribe = fetchChatData();
     return () => {
-      if (unsubscribe && typeof unsubscribe === "function") {
-        unsubscribe();
-      }
+      unsubscribe();
     };
   }, [chatId, currentUser, router]);
 
