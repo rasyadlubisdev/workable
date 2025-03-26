@@ -45,6 +45,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { toast } from "sonner";
 
 interface ChallengeDetailsProps {
   challenge: any;
@@ -183,6 +184,32 @@ export function ChallengeDetails({
     return Math.round(
       (completedMilestones / challenge.milestones.length) * 100
     );
+  };
+
+  const markChallengeAsCompleted = async () => {
+    if (!currentUser || !challenge) return;
+
+    try {
+      setIsLoading(true);
+
+      const challengeRef = doc(db, "challenges", challenge.id);
+      await updateDoc(challengeRef, {
+        status: "completed",
+      });
+
+      toast.success("Congratulations on completing your challenge!", {
+        description: "Challenge completed",
+      });
+
+      onUpdate();
+    } catch (error) {
+      console.error("Error marking challenge as completed:", error);
+      toast.error("There was a problem updating the challenge status.", {
+        description: "Error",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -414,8 +441,17 @@ export function ChallengeDetails({
             {challenge.status === "active" && (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="outline" className="flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4" />
+                  <Button
+                    variant="outline"
+                    className="flex items-center gap-2"
+                    onClick={markChallengeAsCompleted}
+                    disabled={isLoading}
+                  >
+                    {isLoading ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
+                      <CheckCircle2 className="h-4 w-4 mr-2" />
+                    )}
                     Mark as Completed
                   </Button>
                 </TooltipTrigger>
