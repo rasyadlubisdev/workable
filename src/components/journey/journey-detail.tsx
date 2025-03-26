@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { doc, updateDoc } from "firebase/firestore";
+import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase/config";
 import { Loader2 } from "lucide-react";
 
@@ -61,6 +61,8 @@ export function JourneyDetail({
     try {
       setIsLoading(true);
 
+      const isAlreadyEdited = journey.isEdited || false;
+
       const journeyRef = doc(db, "journeys", journey.id);
       await updateDoc(journeyRef, {
         title: values.title,
@@ -68,6 +70,8 @@ export function JourneyDetail({
         tags: values.tags
           ? values.tags.split(",").map((tag) => tag.trim())
           : [],
+        updatedAt: serverTimestamp(),
+        isEdited: true,
       });
 
       onUpdate();

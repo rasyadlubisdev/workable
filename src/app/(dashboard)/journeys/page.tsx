@@ -47,6 +47,7 @@ import Link from "next/link";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { JourneyDetail } from "@/components/journey/journey-detail";
+import { JourneyCard } from "@/components/journey/journey-card";
 
 interface JourneyEntry {
   id: string;
@@ -244,111 +245,13 @@ export default function JourneysPage() {
             ) : (
               <div className="space-y-4">
                 {journeys.map((journey) => (
-                  <Card key={journey.id} className="overflow-hidden">
-                    <CardHeader className="pb-3">
-                      <div className="flex justify-between items-start">
-                        <div className="flex items-center">
-                          <Avatar className="h-8 w-8 mr-2">
-                            <AvatarImage
-                              src={journey.profileImage}
-                              alt={journey.username}
-                            />
-                            <AvatarFallback>
-                              {journey.username?.[0]?.toUpperCase() || "U"}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <CardTitle className="text-base">
-                              {journey.title}
-                            </CardTitle>
-                            <CardDescription>
-                              {journey.createdAt &&
-                                format(
-                                  new Date(journey.createdAt.toDate()),
-                                  "PPP"
-                                )}
-                            </CardDescription>
-                          </div>
-                        </div>
-
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8"
-                            >
-                              {deletingId === journey.id ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <MoreVertical className="h-4 w-4" />
-                              )}
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              onClick={() => setSelectedJourney(journey)}
-                              className="cursor-pointer"
-                            >
-                              <Pencil className="mr-2 h-4 w-4" />
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => handleDeleteJourney(journey.id)}
-                              className="text-destructive cursor-pointer"
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </CardHeader>
-
-                    <CardContent>
-                      <p className="whitespace-pre-wrap mb-4">
-                        {journey.content}
-                      </p>
-
-                      {journey.imageURL && (
-                        <div className="mt-2 mb-4 rounded-md overflow-hidden">
-                          <img
-                            src={journey.imageURL}
-                            alt={journey.title}
-                            className="w-full object-cover max-h-[300px]"
-                          />
-                        </div>
-                      )}
-
-                      <div className="flex flex-wrap gap-1 mt-2">
-                        {journey.tags.map((tag, index) => (
-                          <Badge key={index} variant="secondary">
-                            {tag}
-                          </Badge>
-                        ))}
-                      </div>
-                    </CardContent>
-
-                    <CardFooter className="border-t pt-4 flex justify-between">
-                      <div className="flex space-x-4">
-                        <Button variant="ghost" size="sm" className="h-8 px-2">
-                          <ThumbsUp className="mr-1 h-4 w-4" />
-                          {journey.likes || 0}
-                        </Button>
-                        <Button variant="ghost" size="sm" className="h-8 px-2">
-                          <MessageCircle className="mr-1 h-4 w-4" />0
-                        </Button>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8"
-                        onClick={() => setSelectedJourney(journey)}
-                      >
-                        View details
-                      </Button>
-                    </CardFooter>
-                  </Card>
+                  <JourneyCard
+                    key={journey.id}
+                    journey={journey}
+                    onView={() => setSelectedJourney(journey)}
+                    onEdit={() => setSelectedJourney(journey)}
+                    isCurrentUser={journey.userId === currentUser?.uid}
+                  />
                 ))}
 
                 {hasMore && (
