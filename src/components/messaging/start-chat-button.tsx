@@ -18,7 +18,7 @@ import { toast } from "sonner";
 
 interface StartChatButtonProps {
   recipientId: string;
-  recipientName: string;
+  recipientName: string | null | undefined;
 }
 
 export function StartChatButton({

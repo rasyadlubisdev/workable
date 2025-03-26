@@ -35,34 +35,15 @@ import {
   UsersIcon,
   CalendarIcon,
   Sparkles,
-} from "lucide-react"; // <-- Tambahkan Sparkles di sini
+} from "lucide-react";
 import { format, isPast } from "date-fns";
-import { toast } from "sonner"; // <-- Gunakan import dari sonner
+import { toast } from "sonner";
 import { Progress } from "@/components/ui/progress";
 import { JoinChallengeModal } from "@/components/challenges/join-challenge-modal";
 import Link from "next/link";
+import { Challenge } from "@/types/challenge";
+import { StartChatButton } from "../messaging/start-chat-button";
 
-// Tambahkan properti opsional 'matchScore', 'bio', dan 'commonInterests' ke interface Challenge
-interface Challenge {
-  id: string;
-  title: string;
-  description: string;
-  category: string;
-  endDate: any;
-  createdAt: any;
-  status: string;
-  isPublic: boolean;
-  userId: string;
-  participants: string[];
-  milestones: any[];
-  creatorName?: string;
-  creatorImage?: string;
-  matchScore?: number;
-  bio?: string;
-  commonInterests?: string[];
-}
-
-// Tambahkan fungsi helper getMatchDescription
 const getMatchDescription = (score: number): string => {
   if (score >= 80) return "Exceptional Match";
   if (score >= 60) return "Great Match";
@@ -71,7 +52,6 @@ const getMatchDescription = (score: number): string => {
   return "Basic Match";
 };
 
-// Ubah parameter fetchChallenges agar menerima startAfterDoc?: QueryDocumentSnapshot
 export function PublicChallenges() {
   const { currentUser } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -139,7 +119,6 @@ export function PublicChallenges() {
       const challengesWithCreators = await Promise.all(
         querySnapshot.docs.map(async (docSnap) => {
           const data = docSnap.data() as Challenge;
-          // Perbaiki penggunaan doc.ref.firestore.doc(...) dengan memanggil doc(db, ...)
           const userDoc = await getDoc(doc(db, "users", data.userId));
           if (userDoc.exists()) {
             const userData = userDoc.data() as {
@@ -345,7 +324,6 @@ export function PublicChallenges() {
                           <CardTitle className="text-base">
                             {challenge.creatorName}
                           </CardTitle>
-                          {/* Jika properti goal tidak ada, hilangkan baris berikut atau tambahkan ke interface */}
                           <CardDescription>
                             {challenge.goal || "No goal specified"}
                           </CardDescription>
@@ -374,7 +352,6 @@ export function PublicChallenges() {
                       {getMatchDescription(challenge.matchScore || 0)}
                     </div>
 
-                    {/* Jika properti bio tidak ada, gunakan description sebagai gantinya */}
                     <p className="text-sm line-clamp-2 min-h-[40px] mb-2">
                       {challenge.bio ||
                         challenge.description ||
@@ -404,7 +381,7 @@ export function PublicChallenges() {
                       )}
 
                     <div className="flex flex-wrap gap-1 mt-2">
-                      {challenge.interests
+                      {(challenge.interests ?? [])
                         .filter(
                           (interest: string) =>
                             !challenge.commonInterests?.includes(interest)
@@ -419,12 +396,13 @@ export function PublicChallenges() {
                             {interest}
                           </Badge>
                         ))}
-                      {challenge.interests.length -
+
+                      {(challenge.interests?.length || 0) -
                         (challenge.commonInterests?.length || 0) >
                         3 && (
                         <Badge variant="secondary" className="text-xs">
                           +
-                          {challenge.interests.length -
+                          {(challenge.interests?.length || 0) -
                             (challenge.commonInterests?.length || 0) -
                             3}
                         </Badge>

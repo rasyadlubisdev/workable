@@ -52,29 +52,29 @@ export default function MessagesPage() {
       async (snapshot) => {
         const chatsList: ChatWithUserDetails[] = [];
 
-        for (const doc of snapshot.docs) {
-          const chatData = doc.data();
+        for (const chatDoc of snapshot.docs) {
+          const chatData = chatDoc.data();
 
           const otherUserId = chatData.participants.find(
             (id: string) => id !== currentUser.uid
           );
 
           if (otherUserId) {
-            const userRef = doc.ref.firestore.doc(`users/${otherUserId}`);
+            const userRef = doc(db, "users", otherUserId);
             const userDoc = await getDoc(userRef);
 
             if (userDoc.exists()) {
-              const userData = userDoc.data();
+              const userData: any = userDoc.data();
 
               chatsList.push({
-                id: doc.id,
+                id: chatDoc.id,
                 ...chatData,
                 otherUser: {
                   id: otherUserId,
                   username: userData.username || "Unknown User",
                   profileImage: userData.profileImage || "",
                 },
-              });
+              } as ChatWithUserDetails);
             }
           }
         }
