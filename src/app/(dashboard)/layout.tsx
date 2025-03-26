@@ -30,7 +30,7 @@ export default function DashboardLayout({
       />
       <div className="flex-1">
         <TopNav />
-        <main className="container p-4 md:p-8">{children}</main>
+        <main className="container p-4 md:p-8 mx-auto">{children}</main>
       </div>
     </div>
   );

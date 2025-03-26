@@ -52,7 +52,7 @@ export function TopNav() {
 
   return (
     <div className="border-b">
-      <div className="container flex h-16 items-center justify-end px-4">
+      <div className="container mx-auto flex h-16 items-center justify-end px-4">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="relative h-8 w-8 rounded-full">

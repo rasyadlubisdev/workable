@@ -1,4 +1,5 @@
 "use client";
+
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -43,7 +44,10 @@ export function Sidebar({ collapsed, setCollapsed, pathname }: SidebarProps) {
   return (
     <aside
       className={cn(
-        "fixed top-0 left-0 z-40 h-screen transition-all duration-300 lg:relative bg-card border-r",
+        // Hapus "fixed top-0 left-0" agar tidak menutupi konten
+        "transition-all duration-300 bg-card border-r",
+        // Bisa pakai flex-shrink-0 agar sidebar tidak mengecil
+        "flex-shrink-0",
         collapsed ? "w-16" : "w-64"
       )}
     >
@@ -73,6 +77,7 @@ export function Sidebar({ collapsed, setCollapsed, pathname }: SidebarProps) {
             {collapsed ? <Menu size={18} /> : <X size={18} />}
           </button>
         </div>
+
         <div className="flex flex-col flex-1 space-y-1">
           {navItems.map((item) => (
             <Link
@@ -92,6 +97,7 @@ export function Sidebar({ collapsed, setCollapsed, pathname }: SidebarProps) {
             </Link>
           ))}
         </div>
+
         <button
           onClick={handleLogout}
           className={cn(
