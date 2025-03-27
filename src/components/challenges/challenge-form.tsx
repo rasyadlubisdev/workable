@@ -37,6 +37,9 @@ import {
   Calendar as CalendarIcon,
   PlusCircle,
   Trash2,
+  Pencil,
+  Save,
+  GripVertical,
 } from "lucide-react";
 import { format } from "date-fns";
 import { useRouter } from "next/navigation";
@@ -45,6 +48,22 @@ import { Switch } from "@/components/ui/switch";
 import { v4 as uuidv4 } from "uuid";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 const formSchema = z.object({
   title: z.string().min(3, {
@@ -68,12 +87,117 @@ interface Milestone {
   completed: boolean;
 }
 
+interface SortableMilestoneItemProps {
+  milestone: Milestone;
+  isEditing: boolean;
+  editedText: string;
+  setEditedText: (text: string) => void;
+  onStartEdit: (id: string, text: string) => void;
+  onSaveEdit: () => void;
+  onRemove: (id: string) => void;
+}
+
+function SortableMilestoneItem({
+  milestone,
+  isEditing,
+  editedText,
+  setEditedText,
+  onStartEdit,
+  onSaveEdit,
+  onRemove,
+}: SortableMilestoneItemProps) {
+  const { attributes, listeners, setNodeRef, transform, transition } =
+    useSortable({ id: milestone.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="flex items-center justify-between p-2 border rounded-md"
+    >
+      <div className="flex items-center flex-grow mr-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-6 w-6 p-0 cursor-grab"
+          type="button"
+          {...attributes}
+          {...(listeners ?? {})}
+          onClick={(e) => e.preventDefault()}
+        >
+          <GripVertical className="h-4 w-4 text-muted-foreground" />
+        </Button>
+
+        {isEditing ? (
+          <Input
+            value={editedText}
+            onChange={(e) => setEditedText(e.target.value)}
+            className="ml-2 h-7 text-sm"
+            autoFocus
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                onSaveEdit();
+              }
+            }}
+          />
+        ) : (
+          <span className="text-sm ml-2">{milestone.title}</span>
+        )}
+      </div>
+
+      <div className="flex">
+        {isEditing ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={onSaveEdit}
+            className="h-6 w-6 text-primary hover:text-primary hover:bg-primary/10"
+            disabled={!editedText.trim()}
+          >
+            <Save className="h-4 w-4" />
+          </Button>
+        ) : (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={() => onStartEdit(milestone.id, milestone.title)}
+            className="h-6 w-6 text-muted-foreground hover:text-foreground"
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+        )}
+
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          onClick={() => onRemove(milestone.id)}
+          className="h-6 w-6 text-destructive hover:text-destructive hover:bg-destructive/10"
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export function ChallengeForm() {
   const { currentUser } = useAuth();
   const [loading, setLoading] = useState(false);
   const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [newMilestone, setNewMilestone] = useState("");
   const router = useRouter();
+  const [editingMilestoneId, setEditingMilestoneId] = useState<string | null>(
+    null
+  );
+  const [editedMilestoneText, setEditedMilestoneText] = useState("");
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -84,6 +208,13 @@ export function ChallengeForm() {
       category: "",
     },
   });
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   const addMilestone = () => {
     if (!newMilestone.trim()) return;
@@ -102,6 +233,38 @@ export function ChallengeForm() {
     setMilestones(milestones.filter((m) => m.id !== id));
   };
 
+  const startEditMilestone = (id: string, text: string) => {
+    setEditingMilestoneId(id);
+    setEditedMilestoneText(text);
+  };
+
+  const saveEditedMilestone = () => {
+    if (!editingMilestoneId) return;
+
+    setMilestones(
+      milestones.map((m) =>
+        m.id === editingMilestoneId
+          ? { ...m, title: editedMilestoneText.trim() }
+          : m
+      )
+    );
+
+    setEditingMilestoneId(null);
+    setEditedMilestoneText("");
+  };
+
+  const handleDragEnd = (event: any) => {
+    const { active, over } = event;
+
+    if (active.id !== over.id) {
+      setMilestones((items) => {
+        const oldIndex = items.findIndex((i) => i.id === active.id);
+        const newIndex = items.findIndex((i) => i.id === over.id);
+        return arrayMove(items, oldIndex, newIndex);
+      });
+    }
+  };
+
   const generateInvitationCode = () => {
     return Math.random().toString(36).substring(2, 10).toUpperCase();
   };
@@ -112,7 +275,6 @@ export function ChallengeForm() {
     try {
       setLoading(true);
 
-      // Create a new challenge
       const invitationCode = generateInvitationCode();
 
       await addDoc(collection(db, "challenges"), {
@@ -285,23 +447,29 @@ export function ChallengeForm() {
                       No milestones added yet. Add your first step above.
                     </p>
                   ) : (
-                    milestones.map((milestone) => (
-                      <div
-                        key={milestone.id}
-                        className="flex items-center justify-between p-2 border rounded-md"
+                    <DndContext
+                      sensors={sensors}
+                      collisionDetection={closestCenter}
+                      onDragEnd={handleDragEnd}
+                    >
+                      <SortableContext
+                        items={milestones.map((m) => m.id)}
+                        strategy={verticalListSortingStrategy}
                       >
-                        <span className="text-sm">{milestone.title}</span>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => removeMilestone(milestone.id)}
-                          className="h-6 w-6 text-destructive hover:text-destructive hover:bg-destructive/10"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ))
+                        {milestones.map((milestone) => (
+                          <SortableMilestoneItem
+                            key={milestone.id}
+                            milestone={milestone}
+                            isEditing={milestone.id === editingMilestoneId}
+                            editedText={editedMilestoneText}
+                            setEditedText={setEditedMilestoneText}
+                            onStartEdit={startEditMilestone}
+                            onSaveEdit={saveEditedMilestone}
+                            onRemove={removeMilestone}
+                          />
+                        ))}
+                      </SortableContext>
+                    </DndContext>
                   )}
                 </div>
               </div>

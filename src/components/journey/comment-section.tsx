@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { v4 as uuidv4 } from "uuid";
+import { toast } from "sonner";
 
 interface Comment {
   id: string;
@@ -33,7 +34,7 @@ interface Comment {
 interface CommentSectionProps {
   journeyId: string;
   comments: Comment[];
-  onUpdate?: () => void;
+  onUpdate?: (comments: Comment[]) => void;
 }
 
 export function CommentSection({
@@ -87,6 +88,8 @@ export function CommentSection({
         createdAt: Timestamp.now(),
       };
 
+      const updatedComments = [...comments, newComment];
+
       const journeyRef = doc(db, "journeys", journeyId);
       await updateDoc(journeyRef, {
         comments: arrayUnion(newComment),
@@ -95,10 +98,13 @@ export function CommentSection({
       setCommentText("");
 
       if (onUpdate) {
-        onUpdate();
+        onUpdate(updatedComments);
       }
     } catch (error) {
       console.error("Error adding comment:", error);
+      toast.error("Failed to post comment. Please try again.", {
+        description: "Error",
+      });
     } finally {
       setIsSubmitting(false);
     }
