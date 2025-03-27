@@ -1,17 +1,16 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, use } from "react";
 import { useAuth } from "@/context/auth-context";
 import { db } from "@/lib/firebase/config";
 import {
   doc,
   getDoc,
+  addDoc,
   updateDoc,
-  arrayUnion,
   onSnapshot,
   collection,
   query,
-  where,
   orderBy,
   serverTimestamp,
   Timestamp,
@@ -19,16 +18,18 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Separator } from "@/components/ui/separator";
 import { Loader2, Send, ArrowLeft } from "lucide-react";
 import { format, isToday, isYesterday } from "date-fns";
 import { Chat, Message } from "@/types/chat";
 import { useRouter } from "next/navigation";
-import { v4 as uuidv4 } from "uuid";
 import Link from "next/link";
 
-export default function ChatPage({ params }: { params: { chatId: string } }) {
-  const { chatId } = params;
+export default function ChatPage({
+  params,
+}: {
+  params: Promise<{ chatId: string }>;
+}) {
+  const { chatId } = use(params);
   const { currentUser } = useAuth();
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
@@ -44,58 +45,66 @@ export default function ChatPage({ params }: { params: { chatId: string } }) {
 
     setLoading(true);
 
-    const fetchChatData = () => {
-      const chatRef = doc(db, "chats", chatId);
-      const unsubscribe = onSnapshot(chatRef, (docSnap) => {
-        if (docSnap.exists()) {
-          const data = docSnap.data() as Chat;
-          if (data.messages) {
-            const sortedMessages = [...data.messages].sort((a, b) => {
-              if (!a.createdAt || !b.createdAt) return 0;
-              return a.createdAt.seconds - b.createdAt.seconds;
-            });
-            setMessages(sortedMessages);
-            markMessagesAsRead(data.messages);
+    const chatRef = doc(db, "chats", chatId);
+
+    const unsubscribeChat = onSnapshot(chatRef, async (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data() as Chat;
+        setChat(data);
+
+        const otherUserId = data.participants.find(
+          (uid) => uid !== currentUser.uid
+        );
+        if (otherUserId) {
+          const userDoc = await getDoc(doc(db, "users", otherUserId));
+          if (userDoc.exists()) {
+            setOtherUser(userDoc.data());
           }
         }
-      });
-      return unsubscribe;
-    };
+      } else {
+        setChat(null);
+      }
 
-    const unsubscribe = fetchChatData();
+      setLoading(false);
+    });
+
+    const messagesRef = collection(db, "chats", chatId, "messages");
+    const messagesQuery = query(messagesRef, orderBy("createdAt", "asc"));
+
+    const unsubscribeMessages = onSnapshot(messagesQuery, (querySnap) => {
+      const msgs: Message[] = [];
+      querySnap.forEach((doc) => {
+        msgs.push({ id: doc.id, ...doc.data() } as Message);
+      });
+      setMessages(msgs);
+      markMessagesAsRead(msgs);
+    });
+
     return () => {
-      unsubscribe();
+      unsubscribeChat();
+      unsubscribeMessages();
     };
-  }, [chatId, currentUser, router]);
+  }, [chatId, currentUser]);
 
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
 
-  const markMessagesAsRead = async (messages: Message[]) => {
+  const markMessagesAsRead = async (msgs: Message[]) => {
     if (!currentUser) return;
 
-    try {
-      const unreadMessages = messages.filter(
-        (msg) => !msg.read && msg.senderId !== currentUser.uid
-      );
+    const unread = msgs.filter(
+      (m) => !m.read && m.senderId !== currentUser.uid
+    );
 
-      if (unreadMessages.length > 0) {
-        const chatRef = doc(db, "chats", chatId);
-        const updatedMessages = messages.map((msg) => {
-          if (msg.senderId !== currentUser.uid) {
-            return { ...msg, read: true };
-          }
-          return msg;
-        });
+    if (unread.length === 0) return;
 
-        await updateDoc(chatRef, {
-          messages: updatedMessages,
-        });
-      }
-    } catch (error) {
-      console.error("Error marking messages as read:", error);
-    }
+    const batch = unread.map(async (msg) => {
+      const msgRef = doc(db, "chats", chatId, "messages", msg.id);
+      await updateDoc(msgRef, { read: true });
+    });
+
+    await Promise.all(batch);
   };
 
   const scrollToBottom = () => {
@@ -108,17 +117,17 @@ export default function ChatPage({ params }: { params: { chatId: string } }) {
     try {
       setSending(true);
 
-      const message: Message = {
-        id: uuidv4(),
+      const messageData = {
         senderId: currentUser.uid,
         text: newMessage.trim(),
         createdAt: serverTimestamp(),
         read: false,
       };
 
+      await addDoc(collection(db, "chats", chatId, "messages"), messageData);
+
       const chatRef = doc(db, "chats", chatId);
       await updateDoc(chatRef, {
-        messages: arrayUnion(message),
         lastMessage: {
           text: newMessage.trim(),
           createdAt: serverTimestamp(),
@@ -137,7 +146,6 @@ export default function ChatPage({ params }: { params: { chatId: string } }) {
 
   const formatMessageDate = (timestamp: Timestamp) => {
     if (!timestamp) return "";
-
     const date = timestamp.toDate();
 
     if (isToday(date)) {

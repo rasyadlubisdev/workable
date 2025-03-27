@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/auth-context";
 import { db } from "@/lib/firebase/config";
@@ -35,9 +36,9 @@ import { PublicProfile } from "../public-profile";
 export default function UserProfilePage({
   params,
 }: {
-  params: { userId: string };
+  params: Promise<{ userId: string }>;
 }) {
-  const { userId } = params;
+  const { userId } = React.use(params);
   const { currentUser } = useAuth();
   const [loading, setLoading] = useState(true);
   const [journeysLoading, setJourneysLoading] = useState(true);
@@ -219,20 +220,15 @@ export default function UserProfilePage({
                 <Card key={challenge.id} className="overflow-hidden">
                   <CardHeader className="pb-2">
                     <div className="flex items-start justify-between">
-                      <div>
-                        <CardTitle className="text-lg">
-                          {challenge.title}
-                        </CardTitle>
-                        <CardDescription>
-                          {challenge.createdAt &&
-                            format(
-                              new Date(challenge.createdAt.toDate()),
-                              "PP"
-                            )}
-                        </CardDescription>
-                      </div>
+                      <CardTitle className="text-lg">
+                        {challenge.title}
+                      </CardTitle>
                       <Badge>{challenge.category}</Badge>
                     </div>
+                    <CardDescription>
+                      {challenge.createdAt &&
+                        format(new Date(challenge.createdAt.toDate()), "PP")}
+                    </CardDescription>
                   </CardHeader>
                   <CardContent>
                     <p className="text-sm line-clamp-3 mb-3">
