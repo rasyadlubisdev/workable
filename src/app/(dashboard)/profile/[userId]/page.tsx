@@ -197,7 +197,7 @@ export default function UserProfilePage({
                 <JourneyCard
                   key={journey.id}
                   journey={journey}
-                  onView={() => {}}
+                  // onView={() => {}}
                   showActions={false}
                 />
               ))}

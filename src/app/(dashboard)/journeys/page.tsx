@@ -218,7 +218,6 @@ export default function JourneysPage() {
           <TabsTrigger value="my-updates">My Updates</TabsTrigger>
           <TabsTrigger value="discover">Discover</TabsTrigger>
         </TabsList>
-
         <TabsContent value="my-updates" className="space-y-6">
           <JourneyEntryForm onJourneyCreated={handleJourneyCreated} />
 
@@ -248,7 +247,7 @@ export default function JourneysPage() {
                   <JourneyCard
                     key={journey.id}
                     journey={journey}
-                    onView={() => setSelectedJourney(journey)}
+                    // onView={() => setSelectedJourney(journey)}
                     onEdit={() => setSelectedJourney(journey)}
                     isCurrentUser={journey.userId === currentUser?.uid}
                   />
@@ -277,118 +276,48 @@ export default function JourneysPage() {
         </TabsContent>
 
         <TabsContent value="discover" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Discover Updates</CardTitle>
-              <CardDescription>
-                See what others are working on and get inspired
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {loading ? (
-                <div className="flex justify-center p-12">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                </div>
-              ) : journeys.length === 0 ? (
-                <div className="text-center py-8">
-                  <p className="text-muted-foreground">No updates found</p>
-                </div>
-              ) : (
-                <div className="space-y-6">
-                  {journeys
-                    .filter((journey) => journey.userId !== currentUser?.uid)
-                    .map((journey) => (
-                      <div
-                        key={journey.id}
-                        className="pb-6 border-b last:border-none"
-                      >
-                        <div className="flex items-center mb-3">
-                          <Avatar className="h-8 w-8 mr-2">
-                            <AvatarImage
-                              src={journey.profileImage}
-                              alt={journey.username}
-                            />
-                            <AvatarFallback>
-                              {journey.username?.[0]?.toUpperCase() || "U"}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <p className="font-medium">{journey.username}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {journey.createdAt &&
-                                format(
-                                  new Date(journey.createdAt.toDate()),
-                                  "PPP"
-                                )}
-                            </p>
-                          </div>
-                        </div>
+          {loading ? (
+            <div className="flex justify-center p-12">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : journeys.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-muted-foreground">No updates found</p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {journeys
+                .filter((journey) => journey.userId !== currentUser?.uid)
+                .map((journey) => (
+                  <JourneyCard
+                    key={journey.id}
+                    journey={journey}
+                    // onView={() => setSelectedJourney(journey)}
+                    isCurrentUser={false}
+                    showActions={true}
+                  />
+                ))}
 
-                        <h3 className="text-lg font-semibold mb-2">
-                          {journey.title}
-                        </h3>
-                        <p className="mb-3">{journey.content}</p>
-
-                        {journey.imageURL && (
-                          <div className="mt-2 mb-3 rounded-md overflow-hidden">
-                            <img
-                              src={journey.imageURL}
-                              alt={journey.title}
-                              className="w-full object-cover max-h-[300px]"
-                            />
-                          </div>
-                        )}
-
-                        <div className="flex flex-wrap gap-1 mb-3">
-                          {journey.tags.map((tag, index) => (
-                            <Badge key={index} variant="secondary">
-                              {tag}
-                            </Badge>
-                          ))}
-                        </div>
-
-                        <div className="flex space-x-4">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 px-2"
-                          >
-                            <ThumbsUp className="mr-1 h-4 w-4" />
-                            {journey.likes || 0}
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 px-2"
-                          >
-                            <MessageCircle className="mr-1 h-4 w-4" />0
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-
-                  {hasMore &&
-                    journeys.some((j) => j.userId !== currentUser?.uid) && (
-                      <Button
-                        variant="outline"
-                        onClick={() => fetchJourneys(activeTab)}
-                        disabled={loadingMore}
-                        className="w-full"
-                      >
-                        {loadingMore ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Loading more...
-                          </>
-                        ) : (
-                          "Load More"
-                        )}
-                      </Button>
+              {hasMore &&
+                journeys.some((j) => j.userId !== currentUser?.uid) && (
+                  <Button
+                    variant="outline"
+                    onClick={() => fetchJourneys(activeTab)}
+                    disabled={loadingMore}
+                    className="w-full"
+                  >
+                    {loadingMore ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Loading more...
+                      </>
+                    ) : (
+                      "Load More"
                     )}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                  </Button>
+                )}
+            </div>
+          )}
         </TabsContent>
       </Tabs>
 

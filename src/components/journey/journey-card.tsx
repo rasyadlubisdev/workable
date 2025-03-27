@@ -16,7 +16,7 @@ import Link from "next/link";
 
 interface JourneyCardProps {
   journey: any;
-  onView: () => void;
+  // onView: () => void;
   onEdit?: () => void;
   isCurrentUser?: boolean;
   showActions?: boolean;
@@ -24,7 +24,7 @@ interface JourneyCardProps {
 
 export function JourneyCard({
   journey,
-  onView,
+  // onView,
   onEdit,
   isCurrentUser = false,
   showActions = true,
@@ -99,11 +99,11 @@ export function JourneyCard({
             initialLikedBy={journey.likedBy || []}
           />
 
-          {showActions && (
+          {/* {showActions && (
             <Button variant="ghost" size="sm" className="h-8" onClick={onView}>
               View details
             </Button>
-          )}
+          )} */}
         </div>
 
         <CommentSection
