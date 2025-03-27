@@ -14,7 +14,6 @@ export default function ConnectPage() {
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="people">People</TabsTrigger>
           <TabsTrigger value="challenges">Challenges</TabsTrigger>
-          <TabsTrigger value="messages">Messages</TabsTrigger>
         </TabsList>
 
         <TabsContent value="people">
@@ -23,22 +22,6 @@ export default function ConnectPage() {
 
         <TabsContent value="challenges">
           <PublicChallenges />
-        </TabsContent>
-
-        <TabsContent value="messages">
-          <div className="text-center p-8 border rounded-lg">
-            <h3 className="text-lg font-medium mb-2">
-              Quick Access to Messages
-            </h3>
-            <p className="text-muted-foreground mb-4">
-              View and manage your conversations with other users
-            </p>
-            <div className="flex justify-center">
-              <a href="/messages">
-                <Button>Go to Messages</Button>
-              </a>
-            </div>
-          </div>
         </TabsContent>
       </Tabs>
     </div>

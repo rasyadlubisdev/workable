@@ -15,7 +15,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { format, isPast } from "date-fns";
-import { doc, updateDoc, arrayUnion, getDoc } from "firebase/firestore";
+import {
+  doc,
+  updateDoc,
+  arrayUnion,
+  getDoc,
+  serverTimestamp,
+} from "firebase/firestore";
 import { db } from "@/lib/firebase/config";
 import { useAuth } from "@/context/auth-context";
 import {
@@ -71,6 +77,9 @@ export function ChallengeDetails({
   const [updatingMilestone, setUpdatingMilestone] = useState<string | null>(
     null
   );
+  const [updatingUserMilestone, setUpdatingUserMilestone] = useState<
+    string | null
+  >(null);
 
   const milestoneForm = useForm<z.infer<typeof milestoneSchema>>({
     resolver: zodResolver(milestoneSchema),
@@ -143,35 +152,74 @@ export function ChallengeDetails({
     if (!currentUser || !challenge) return;
 
     try {
-      setUpdatingMilestone(milestoneId);
+      setUpdatingUserMilestone(milestoneId);
 
-      const challengeRef = doc(db, "challenges", challenge.id);
-      const challengeDoc = await getDoc(challengeRef);
+      if (challenge.isOwner) {
+        // For owner: update the original challenge
+        const challengeRef = doc(db, "challenges", challenge.id);
+        const challengeDoc = await getDoc(challengeRef);
 
-      if (!challengeDoc.exists()) return;
+        if (!challengeDoc.exists()) return;
 
-      const data = challengeDoc.data();
-      const milestones = [...data.milestones];
+        const data = challengeDoc.data();
+        const milestones = [...data.milestones];
 
-      const milestoneIndex = milestones.findIndex((m) => m.id === milestoneId);
-      if (milestoneIndex !== -1) {
-        milestones[milestoneIndex] = {
-          ...milestones[milestoneIndex],
-          completed: !currentValue,
-        };
+        const milestoneIndex = milestones.findIndex(
+          (m) => m.id === milestoneId
+        );
+        if (milestoneIndex !== -1) {
+          milestones[milestoneIndex] = {
+            ...milestones[milestoneIndex],
+            completed: !currentValue,
+          };
 
-        await updateDoc(challengeRef, {
-          milestones: milestones,
-        });
+          await updateDoc(challengeRef, {
+            milestones: milestones,
+          });
 
-        challenge.milestones = milestones;
+          challenge.milestones = milestones;
+        }
+      } else {
+        const progressRef = doc(
+          db,
+          "userProgress",
+          `${currentUser.uid}_${challenge.id}`
+        );
+        const progressDoc = await getDoc(progressRef);
 
-        onUpdate();
+        if (!progressDoc.exists()) return;
+
+        const data = progressDoc.data();
+        const milestones = [...data.milestones];
+
+        const milestoneIndex = milestones.findIndex(
+          (m) => m.id === milestoneId
+        );
+        if (milestoneIndex !== -1) {
+          milestones[milestoneIndex] = {
+            ...milestones[milestoneIndex],
+            completed: !currentValue,
+          };
+
+          await updateDoc(progressRef, {
+            milestones: milestones,
+            lastUpdated: serverTimestamp(),
+          });
+
+          if (challenge.userProgress) {
+            challenge.userProgress.milestones = milestones;
+          }
+        }
       }
+
+      onUpdate();
     } catch (error) {
       console.error("Error toggling milestone:", error);
+      toast.error("Failed to update milestone status.", {
+        description: "Error",
+      });
     } finally {
-      setUpdatingMilestone(null);
+      setUpdatingUserMilestone(null);
     }
   };
 
@@ -211,6 +259,14 @@ export function ChallengeDetails({
       setIsLoading(false);
     }
   };
+
+  function getMilestones() {
+    if (challenge.isOwner) {
+      return challenge.milestones || [];
+    } else {
+      return challenge.userProgress?.milestones || [];
+    }
+  }
 
   return (
     <Dialog open onOpenChange={onClose}>
@@ -326,56 +382,27 @@ export function ChallengeDetails({
           </TabsContent>
 
           <TabsContent value="milestones" className="space-y-4 mt-4">
-            <Form {...milestoneForm}>
-              <form
-                onSubmit={milestoneForm.handleSubmit(addMilestone)}
-                className="space-y-4"
-              >
-                <FormField
-                  control={milestoneForm.control}
-                  name="title"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Add New Milestone</FormLabel>
-                      <div className="flex gap-2">
-                        <FormControl>
-                          <Input
-                            placeholder="e.g. Complete chapter 1"
-                            {...field}
-                          />
-                        </FormControl>
-                        <Button
-                          type="submit"
-                          size="sm"
-                          disabled={addingMilestone}
-                        >
-                          {addingMilestone ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <PlusCircle className="h-4 w-4" />
-                          )}
-                        </Button>
-                      </div>
-                      <FormDescription>
-                        Break down your challenge into achievable steps
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </form>
-            </Form>
+            {challenge.isOwner && (
+              <Form {...milestoneForm}>
+                <form
+                  onSubmit={milestoneForm.handleSubmit(addMilestone)}
+                  className="space-y-4"
+                ></form>
+              </Form>
+            )}
 
-            {!challenge.milestones || challenge.milestones.length === 0 ? (
+            {getMilestones().length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <p>
-                  No milestones added yet. Create your first milestone to track
-                  progress.
+                  No milestones added yet.{" "}
+                  {challenge.isOwner
+                    ? "Create your first milestone to track progress."
+                    : "The owner hasn't added any milestones yet."}
                 </p>
               </div>
             ) : (
               <div className="space-y-2">
-                {challenge.milestones.map((milestone: any) => (
+                {getMilestones().map((milestone: any) => (
                   <div
                     key={milestone.id}
                     className="flex items-center gap-2 p-3 border rounded-md"
@@ -385,7 +412,7 @@ export function ChallengeDetails({
                       onCheckedChange={() =>
                         toggleMilestone(milestone.id, milestone.completed)
                       }
-                      disabled={!!updatingMilestone}
+                      disabled={!!updatingUserMilestone}
                       id={`milestone-${milestone.id}`}
                     />
                     <label
@@ -398,7 +425,7 @@ export function ChallengeDetails({
                     >
                       {milestone.title}
                     </label>
-                    {updatingMilestone === milestone.id && (
+                    {updatingUserMilestone === milestone.id && (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     )}
                   </div>

@@ -12,36 +12,12 @@ import {
   deleteDoc,
   doc,
   updateDoc,
+  getDoc,
 } from "firebase/firestore";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Loader2, Plus, Target, Clock } from "lucide-react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  Loader2,
-  MoreVertical,
-  Trash2,
-  Target,
-  Plus,
-  CheckCircle,
-  Users,
-  Clock,
-} from "lucide-react";
-import Link from "next/link";
-import { Badge } from "@/components/ui/badge";
-import { ChallengeDetails } from "@/components/challenges/challenge-details";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -53,21 +29,9 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { format, isPast } from "date-fns";
-import { Progress } from "@/components/ui/progress";
-
-interface Challenge {
-  id: string;
-  userId: string;
-  title: string;
-  description: string;
-  endDate: any;
-  isPublic: boolean;
-  category: string;
-  createdAt: any;
-  status: string;
-  participants: string[];
-  milestones: any[];
-}
+import { Challenge } from "@/types/challenge";
+import { ChallengeDetails } from "@/components/challenges/challenge-details";
+import { ChallengeCard } from "@/components/challenges/challenge-card";
 
 export default function ChallengesPage() {
   const { currentUser } = useAuth();
@@ -89,22 +53,65 @@ export default function ChallengesPage() {
     try {
       setLoading(true);
 
-      const challengesRef = collection(db, "challenges");
-      const challengesQuery = query(
-        challengesRef,
+      let allChallenges: Challenge[] = [];
+
+      const ownedChallengesRef = collection(db, "challenges");
+      const ownedChallengesQuery = query(
+        ownedChallengesRef,
         where("userId", "==", currentUser.uid),
         where("status", "==", status),
         orderBy("endDate", "asc")
       );
 
-      const querySnapshot = await getDocs(challengesQuery);
-
-      const challengesData = querySnapshot.docs.map((doc) => ({
+      const ownedSnap = await getDocs(ownedChallengesQuery);
+      const ownedChallenges = ownedSnap.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
+        isOwner: true,
       })) as Challenge[];
 
-      setChallenges(challengesData);
+      allChallenges = [...ownedChallenges];
+
+      const participatingChallengesRef = collection(db, "challenges");
+      const participatingQuery = query(
+        participatingChallengesRef,
+        where("participants", "array-contains", currentUser.uid),
+        where("userId", "!=", currentUser.uid),
+        where("status", "==", status),
+        orderBy("userId"),
+        orderBy("endDate", "asc")
+      );
+
+      const participatingSnap = await getDocs(participatingQuery);
+      const participatingChallenges = participatingSnap.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+        isOwner: false,
+      })) as Challenge[];
+
+      allChallenges = [...allChallenges, ...participatingChallenges];
+
+      const userProgressPromises = allChallenges.map(async (challenge) => {
+        if (!challenge.isOwner) {
+          const progressRef = doc(
+            db,
+            "userProgress",
+            `${currentUser.uid}_${challenge.id}`
+          );
+          const progressSnap = await getDoc(progressRef);
+
+          if (progressSnap.exists()) {
+            return {
+              ...challenge,
+              userProgress: progressSnap.data(),
+            };
+          }
+        }
+        return challenge;
+      });
+
+      const challengesWithProgress = await Promise.all(userProgressPromises);
+      setChallenges(challengesWithProgress);
     } catch (error) {
       console.error("Error fetching challenges:", error);
     } finally {
@@ -120,6 +127,10 @@ export default function ChallengesPage() {
 
   const handleTabChange = (value: string) => {
     setActiveTab(value);
+  };
+
+  const handleChallengeUpdated = () => {
+    fetchChallenges(activeTab);
   };
 
   const handleDeleteChallenge = (challengeId: string) => {
@@ -143,50 +154,6 @@ export default function ChallengesPage() {
       setDeletingId(null);
       setChallengeToDelete(null);
     }
-  };
-
-  const handleCompleteChallenge = async (challengeId: string) => {
-    if (!currentUser) return;
-
-    try {
-      setDeletingId(challengeId); // Reuse the loading state
-      const challengeRef = doc(db, "challenges", challengeId);
-      await updateDoc(challengeRef, {
-        status: "completed",
-      });
-      setChallenges(
-        challenges.filter((challenge) => challenge.id !== challengeId)
-      );
-    } catch (error) {
-      console.error("Error completing challenge:", error);
-    } finally {
-      setDeletingId(null);
-    }
-  };
-
-  const calculateProgress = (challenge: Challenge) => {
-    if (!challenge.milestones || challenge.milestones.length === 0) return 0;
-
-    const completedMilestones = challenge.milestones.filter(
-      (m) => m.completed
-    ).length;
-    return Math.round(
-      (completedMilestones / challenge.milestones.length) * 100
-    );
-  };
-
-  const getTimeLeft = (endDate: any) => {
-    if (!endDate) return "No deadline";
-    const end = new Date(endDate.toDate());
-    const now = new Date();
-
-    if (isPast(end)) return "Expired";
-
-    const diffTime = Math.abs(end.getTime() - now.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-    if (diffDays === 1) return "1 day left";
-    return `${diffDays} days left`;
   };
 
   return (
@@ -217,8 +184,8 @@ export default function ChallengesPage() {
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
           ) : challenges.length === 0 ? (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center p-12 text-center">
+            <div className="p-12">
+              <div className="border rounded p-12 text-center">
                 <Target className="h-12 w-12 text-muted-foreground mb-4" />
                 <h3 className="text-lg font-medium">No active challenges</h3>
                 <p className="text-muted-foreground mt-2 mb-6">
@@ -230,99 +197,17 @@ export default function ChallengesPage() {
                     Create Challenge
                   </Button>
                 </Link>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {challenges.map((challenge) => (
-                <Card
+                <ChallengeCard
                   key={challenge.id}
-                  className="overflow-hidden flex flex-col"
-                >
-                  <CardHeader className="pb-2">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <CardTitle className="text-lg">
-                          {challenge.title}
-                        </CardTitle>
-                        <CardDescription>
-                          {format(new Date(challenge.endDate.toDate()), "PPP")}
-                        </CardDescription>
-                      </div>
-                      <Badge
-                        variant={
-                          isPast(new Date(challenge.endDate.toDate()))
-                            ? "destructive"
-                            : "outline"
-                        }
-                      >
-                        {getTimeLeft(challenge.endDate)}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-
-                  <CardContent className="flex-grow">
-                    <p className="text-sm line-clamp-2 mb-4">
-                      {challenge.description}
-                    </p>
-
-                    <div className="flex items-center justify-between mb-2 text-sm">
-                      <span>Progress</span>
-                      <span>{calculateProgress(challenge)}%</span>
-                    </div>
-                    <Progress
-                      value={calculateProgress(challenge)}
-                      className="h-2 mb-4"
-                    />
-
-                    <div className="flex flex-wrap gap-2">
-                      <Badge variant="secondary">{challenge.category}</Badge>
-                      {challenge.isPublic && (
-                        <Badge variant="outline">
-                          <Users className="h-3 w-3 mr-1" />
-                          Public
-                        </Badge>
-                      )}
-                    </div>
-                  </CardContent>
-
-                  <CardFooter className="border-t pt-4 flex justify-between">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setSelectedChallenge(challenge)}
-                    >
-                      View Details
-                    </Button>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          {deletingId === challenge.id ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <MoreVertical className="h-4 w-4" />
-                          )}
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          onClick={() => handleCompleteChallenge(challenge.id)}
-                          className="text-green-600 cursor-pointer"
-                        >
-                          <CheckCircle className="mr-2 h-4 w-4" />
-                          Mark as Completed
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => handleDeleteChallenge(challenge.id)}
-                          className="text-destructive cursor-pointer"
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </CardFooter>
-                </Card>
+                  challenge={challenge}
+                  onViewDetails={() => setSelectedChallenge(challenge)}
+                  onChallengeUpdated={handleChallengeUpdated}
+                />
               ))}
             </div>
           )}
@@ -344,61 +229,12 @@ export default function ChallengesPage() {
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {challenges.map((challenge) => (
-                <Card key={challenge.id} className="overflow-hidden">
-                  <CardHeader className="pb-2">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <CardTitle className="text-lg">
-                          {challenge.title}
-                        </CardTitle>
-                        <CardDescription>
-                          {format(new Date(challenge.endDate.toDate()), "PPP")}
-                        </CardDescription>
-                      </div>
-                      <Badge variant="secondary">Completed</Badge>
-                    </div>
-                  </CardHeader>
-
-                  <CardContent>
-                    <p className="text-sm line-clamp-2 mb-4">
-                      {challenge.description}
-                    </p>
-
-                    <div className="flex flex-wrap gap-2">
-                      <Badge variant="outline">{challenge.category}</Badge>
-                    </div>
-                  </CardContent>
-
-                  <CardFooter className="border-t pt-4 flex justify-between">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setSelectedChallenge(challenge)}
-                    >
-                      View Details
-                    </Button>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          {deletingId === challenge.id ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <MoreVertical className="h-4 w-4" />
-                          )}
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          onClick={() => handleDeleteChallenge(challenge.id)}
-                          className="text-destructive cursor-pointer"
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </CardFooter>
-                </Card>
+                <ChallengeCard
+                  key={challenge.id}
+                  challenge={challenge}
+                  onViewDetails={() => setSelectedChallenge(challenge)}
+                  onChallengeUpdated={handleChallengeUpdated}
+                />
               ))}
             </div>
           )}
@@ -409,10 +245,7 @@ export default function ChallengesPage() {
         <ChallengeDetails
           challenge={selectedChallenge}
           onClose={() => setSelectedChallenge(null)}
-          onUpdate={() => {
-            fetchChallenges(activeTab);
-            setSelectedChallenge(null);
-          }}
+          onUpdate={handleChallengeUpdated}
         />
       )}
 

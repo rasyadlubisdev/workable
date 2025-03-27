@@ -16,6 +16,8 @@ import {
   getDoc,
   updateDoc,
   arrayUnion,
+  setDoc,
+  serverTimestamp,
 } from "firebase/firestore";
 import {
   Card,
@@ -187,6 +189,20 @@ export function PublicChallenges() {
       await updateDoc(challengeRef, {
         participants: arrayUnion(currentUser.uid),
       });
+
+      await setDoc(
+        doc(db, "userProgress", `${currentUser.uid}_${challengeId}`),
+        {
+          userId: currentUser.uid,
+          challengeId: challengeId,
+          milestones: challengeData.milestones.map((milestone: any) => ({
+            ...milestone,
+            completed: false,
+          })),
+          lastUpdated: serverTimestamp(),
+          joinedAt: serverTimestamp(),
+        }
+      );
 
       toast.success(`You've joined "${challengeData.title}"`, {
         description: "Success!",

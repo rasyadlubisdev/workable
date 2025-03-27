@@ -14,7 +14,9 @@ import {
   Menu,
   X,
   ChevronRight,
+  MessageSquare,
 } from "lucide-react";
+import { UnreadBadge } from "@/components/messaging/unread-badge";
 
 interface SidebarProps {
   collapsed: boolean;
@@ -39,14 +41,13 @@ export function Sidebar({ collapsed, setCollapsed, pathname }: SidebarProps) {
     { href: "/journeys", icon: BookText, label: "Journeys" },
     { href: "/challenges", icon: Target, label: "Challenges" },
     { href: "/connect", icon: Users, label: "Connect" },
+    { href: "/messages", icon: MessageSquare, label: "Messages" },
   ];
 
   return (
     <aside
       className={cn(
-        // Hapus "fixed top-0 left-0" agar tidak menutupi konten
         "transition-all duration-300 bg-card border-r",
-        // Bisa pakai flex-shrink-0 agar sidebar tidak mengecil
         "flex-shrink-0",
         collapsed ? "w-16" : "w-64"
       )}
@@ -93,7 +94,8 @@ export function Sidebar({ collapsed, setCollapsed, pathname }: SidebarProps) {
               )}
             >
               <item.icon className={cn("h-5 w-5", collapsed ? "" : "mr-2")} />
-              {!collapsed && <span>{item.label}</span>}
+              {!collapsed && <span className="flex-1">{item.label}</span>}
+              {item.icon === MessageSquare && <UnreadBadge />}
             </Link>
           ))}
         </div>
