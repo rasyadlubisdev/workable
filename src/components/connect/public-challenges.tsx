@@ -43,14 +43,7 @@ import { JoinChallengeModal } from "@/components/challenges/join-challenge-modal
 import Link from "next/link";
 import { Challenge } from "@/types/challenge";
 import { StartChatButton } from "../messaging/start-chat-button";
-
-const getMatchDescription = (score: number): string => {
-  if (score >= 80) return "Exceptional Match";
-  if (score >= 60) return "Great Match";
-  if (score >= 40) return "Good Match";
-  if (score >= 20) return "Fair Match";
-  return "Basic Match";
-};
+import { ChallengeDetailModal } from "@/components/connect/challenge-detail-modal";
 
 export function PublicChallenges() {
   const { currentUser } = useAuth();
@@ -63,6 +56,9 @@ export function PublicChallenges() {
   const [hasMore, setHasMore] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [joiningId, setJoiningId] = useState<string | null>(null);
+  const [selectedChallenge, setSelectedChallenge] = useState<Challenge | null>(
+    null
+  );
 
   useEffect(() => {
     if (currentUser) {
@@ -304,128 +300,88 @@ export function PublicChallenges() {
               );
 
               return (
-                <Card key={challenge.id} className="overflow-hidden">
+                <Card
+                  key={challenge.id}
+                  className="overflow-hidden flex flex-col"
+                >
                   <CardHeader className="pb-2">
                     <div className="flex justify-between">
-                      <Link
-                        href={`/profile/${challenge.userId}`}
-                        className="flex items-start gap-3"
-                      >
-                        <Avatar className="h-10 w-10">
-                          <AvatarImage
-                            src={challenge.creatorImage}
-                            alt={challenge.creatorName}
-                          />
-                          <AvatarFallback>
-                            {challenge.creatorName?.[0]?.toUpperCase() || "U"}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <CardTitle className="text-base">
-                            {challenge.creatorName}
-                          </CardTitle>
-                          <CardDescription>
-                            {challenge.goal || "No goal specified"}
-                          </CardDescription>
-                        </div>
-                      </Link>
-
+                      <CardTitle className="text-lg">
+                        {challenge.title}
+                      </CardTitle>
                       <Badge
-                        className={
-                          (challenge.matchScore || 0) >= 60
-                            ? "bg-green-500"
-                            : ""
-                        }
                         variant={
-                          (challenge.matchScore || 0) >= 60
-                            ? "default"
-                            : "secondary"
+                          isPast(new Date(challenge.endDate.toDate()))
+                            ? "destructive"
+                            : "outline"
                         }
                       >
-                        {challenge.matchScore}% Match
+                        {getTimeLeft(challenge.endDate)}
                       </Badge>
                     </div>
                   </CardHeader>
 
-                  <CardContent>
-                    <div className="text-xs text-muted-foreground uppercase font-medium mb-1">
-                      {getMatchDescription(challenge.matchScore || 0)}
+                  <CardContent className="flex-grow">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+                      <CalendarIcon className="h-3 w-3" />
+                      <span>
+                        Due {format(new Date(challenge.endDate.toDate()), "PP")}
+                      </span>
                     </div>
 
-                    <p className="text-sm line-clamp-2 min-h-[40px] mb-2">
-                      {challenge.bio ||
-                        challenge.description ||
-                        "No bio available"}
+                    <p className="text-sm line-clamp-2 mb-3">
+                      {challenge.description}
                     </p>
 
-                    {challenge.commonInterests &&
-                      challenge.commonInterests.length > 0 && (
-                        <div className="mb-2">
-                          <div className="text-xs text-muted-foreground mb-1">
-                            Common Interests:
-                          </div>
-                          <div className="flex flex-wrap gap-1">
-                            {challenge.commonInterests.map(
-                              (interest: string, index: number) => (
-                                <Badge
-                                  key={index}
-                                  variant="outline"
-                                  className="text-xs"
-                                >
-                                  {interest}
-                                </Badge>
-                              )
-                            )}
-                          </div>
-                        </div>
-                      )}
+                    <div className="flex items-center justify-between mb-2 text-sm">
+                      <span>Progress</span>
+                      <span>{calculateProgress(challenge)}%</span>
+                    </div>
+                    <Progress
+                      value={calculateProgress(challenge)}
+                      className="h-2 mb-3"
+                    />
 
-                    <div className="flex flex-wrap gap-1 mt-2">
-                      {(challenge.interests ?? [])
-                        .filter(
-                          (interest: string) =>
-                            !challenge.commonInterests?.includes(interest)
-                        )
-                        .slice(0, 3)
-                        .map((interest: string, index: number) => (
-                          <Badge
-                            key={index}
-                            variant="secondary"
-                            className="text-xs"
-                          >
-                            {interest}
-                          </Badge>
-                        ))}
-
-                      {(challenge.interests?.length || 0) -
-                        (challenge.commonInterests?.length || 0) >
-                        3 && (
-                        <Badge variant="secondary" className="text-xs">
-                          +
-                          {(challenge.interests?.length || 0) -
-                            (challenge.commonInterests?.length || 0) -
-                            3}
-                        </Badge>
-                      )}
+                    <div className="flex items-center text-sm text-muted-foreground">
+                      <UsersIcon className="h-3 w-3 mr-1" />
+                      {challenge.participants.length}{" "}
+                      {challenge.participants.length === 1
+                        ? "participant"
+                        : "participants"}
                     </div>
                   </CardContent>
 
                   <CardFooter className="border-t pt-4 flex gap-2">
-                    <Link href={`/profile/${challenge.id}`} className="flex-1">
-                      <Button variant="outline" className="w-full" size="sm">
-                        View Profile
-                      </Button>
-                    </Link>
-                    <StartChatButton
-                      recipientId={challenge.id}
-                      recipientName={challenge.creatorName}
-                    />
+                    <Button
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => setSelectedChallenge(challenge)}
+                    >
+                      View Details
+                    </Button>
+
+                    <Button
+                      className="flex-1"
+                      variant={isParticipant ? "outline" : "default"}
+                      onClick={() => handleJoinChallenge(challenge.id)}
+                      disabled={joiningId === challenge.id || isParticipant}
+                    >
+                      {joiningId === challenge.id ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Joining...
+                        </>
+                      ) : isParticipant ? (
+                        "Joined"
+                      ) : (
+                        "Join Challenge"
+                      )}
+                    </Button>
                   </CardFooter>
                 </Card>
               );
             })}
           </div>
-
           {hasMore && (
             <Button
               variant="outline"
@@ -444,6 +400,17 @@ export function PublicChallenges() {
             </Button>
           )}
         </>
+      )}
+
+      {selectedChallenge && (
+        <ChallengeDetailModal
+          challenge={selectedChallenge}
+          onClose={() => setSelectedChallenge(null)}
+          onJoin={() => {
+            fetchChallenges();
+            setSelectedChallenge(null);
+          }}
+        />
       )}
     </div>
   );

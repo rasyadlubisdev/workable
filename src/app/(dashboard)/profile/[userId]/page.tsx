@@ -31,7 +31,7 @@ import { useRouter } from "next/navigation";
 import { JourneyCard } from "@/components/journey/journey-card";
 import Link from "next/link";
 import { toast } from "sonner";
-import { PublicProfile } from "../public-profile";
+import { PublicProfile } from "@/components/profile/public-profile";
 
 export default function UserProfilePage({
   params,
