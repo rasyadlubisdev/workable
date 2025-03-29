@@ -14,6 +14,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase/config";
+import { NotificationsPopover } from "@/components/notifications/notifications-popover";
 
 export function TopNav() {
   const { currentUser, logout } = useAuth();
@@ -53,6 +54,7 @@ export function TopNav() {
   return (
     <div className="border-b">
       <div className="container mx-auto flex h-16 items-center justify-end px-4">
+        <NotificationsPopover />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="relative h-8 w-8 rounded-full">

@@ -28,6 +28,7 @@ import { Loader2, Search, MessagesSquare } from "lucide-react";
 import { format, isToday, isYesterday } from "date-fns";
 import { ChatWithUserDetails } from "@/types/chat";
 import Link from "next/link";
+import { UnreadBadge } from "@/components/messaging/unread-badge";
 
 export default function MessagesPage() {
   const { currentUser } = useAuth();
@@ -171,9 +172,12 @@ export default function MessagesPage() {
                         </span>
                       )}
                     </div>
-                    <p className="text-sm text-muted-foreground truncate">
-                      {chat.lastMessage?.text || "Start a conversation"}
-                    </p>
+                    <div className="flex justify-between items-center">
+                      <p className="text-sm text-muted-foreground truncate flex-1">
+                        {chat.lastMessage?.text || "Start a conversation"}
+                      </p>
+                      <UnreadBadge chatId={chat.id} />
+                    </div>
                   </div>
                 </div>
               </Link>

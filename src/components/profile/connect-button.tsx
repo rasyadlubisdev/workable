@@ -17,6 +17,7 @@ import {
 } from "firebase/firestore";
 import { Loader2, UserPlus, UserCheck } from "lucide-react";
 import { toast } from "sonner";
+import { createConnectionNotification } from "@/lib/notifications";
 
 interface ConnectButtonProps {
   userId: string;
@@ -111,6 +112,8 @@ export function ConnectButton({ userId }: ConnectButtonProps) {
           connectionCount: increment(1),
           updatedAt: serverTimestamp(),
         });
+
+        await createConnectionNotification(userId, currentUser.uid);
 
         setIsConnected(true);
         toast.success("You are now connected with this user.", {

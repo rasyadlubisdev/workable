@@ -23,6 +23,7 @@ import { format, isToday, isYesterday } from "date-fns";
 import { Chat, Message } from "@/types/chat";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { createMessageNotification } from "@/lib/notifications";
 
 export default function ChatPage({
   params,
@@ -137,6 +138,18 @@ export default function ChatPage({
       });
 
       setNewMessage("");
+
+      const recipientId = chat.participants.find(
+        (id) => id !== currentUser.uid
+      );
+      if (recipientId) {
+        await createMessageNotification(
+          recipientId,
+          currentUser.uid,
+          chatId,
+          newMessage.trim()
+        );
+      }
     } catch (error) {
       console.error("Error sending message:", error);
     } finally {
