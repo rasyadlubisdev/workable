@@ -48,6 +48,7 @@ import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { JourneyDetail } from "@/components/journey/journey-detail";
 import { JourneyCard } from "@/components/journey/journey-card";
+import { toast } from "sonner";
 
 interface JourneyEntry {
   id: string;
@@ -193,9 +194,16 @@ export default function JourneysPage() {
     try {
       setDeletingId(journeyId);
       await deleteDoc(doc(db, "journeys", journeyId));
-      setJourneys(journeys.filter((journey) => journey.id !== journeyId));
+
+      setJourneys((prev) => prev.filter((j) => j.id !== journeyId));
+      toast("Your journey update has been deleted successfully.", {
+        description: "Journey deleted",
+      });
     } catch (error) {
       console.error("Error deleting journey:", error);
+      toast.error("There was a problem deleting your journey update.", {
+        description: "Error",
+      });
     } finally {
       setDeletingId(null);
     }
@@ -249,6 +257,7 @@ export default function JourneysPage() {
                     journey={journey}
                     // onView={() => setSelectedJourney(journey)}
                     onEdit={() => setSelectedJourney(journey)}
+                    onDelete={handleDeleteJourney}
                     isCurrentUser={journey.userId === currentUser?.uid}
                   />
                 ))}

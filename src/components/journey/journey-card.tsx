@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { useAuth } from "@/context/auth-context";
 import {
   Card,
   CardContent,
@@ -13,11 +15,20 @@ import { format } from "date-fns";
 import { LikeButton } from "./like-button";
 import { CommentSection } from "./comment-section";
 import Link from "next/link";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@radix-ui/react-dropdown-menu";
+import { MoreVertical, Pencil, Trash2 } from "lucide-react";
+import { DeleteConfirmationDialog } from "@/components/shared/delete-confirmation-dialog";
 
 interface JourneyCardProps {
   journey: any;
   // onView: () => void;
   onEdit?: () => void;
+  onDelete?: (id: string) => void;
   isCurrentUser?: boolean;
   showActions?: boolean;
 }
@@ -26,9 +37,13 @@ export function JourneyCard({
   journey,
   // onView,
   onEdit,
+  onDelete,
   isCurrentUser = false,
   showActions = true,
 }: JourneyCardProps) {
+  const { currentUser } = useAuth();
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+
   return (
     <Card className="overflow-hidden">
       <CardHeader className="pb-2">
@@ -61,10 +76,31 @@ export function JourneyCard({
             </div>
           </div>
 
-          {showActions && isCurrentUser && onEdit && (
-            <Button variant="ghost" size="sm" className="h-8" onClick={onEdit}>
-              Edit
-            </Button>
+          {showActions && isCurrentUser && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {onEdit && (
+                  <DropdownMenuItem onClick={onEdit}>
+                    <Pencil className="mr-2 h-4 w-4" />
+                    Edit
+                  </DropdownMenuItem>
+                )}
+                {onDelete && (
+                  <DropdownMenuItem
+                    className="text-destructive focus:text-destructive"
+                    onClick={() => setDeleteConfirmOpen(true)}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
         </div>
       </CardHeader>
@@ -112,6 +148,19 @@ export function JourneyCard({
           initialComments={journey.comments || []}
         />
       </CardFooter>
+
+      {deleteConfirmOpen && onDelete && (
+        <DeleteConfirmationDialog
+          open={deleteConfirmOpen}
+          onOpenChange={setDeleteConfirmOpen}
+          onConfirm={() => {
+            onDelete(journey.id);
+            setDeleteConfirmOpen(false);
+          }}
+          title="Delete Journey"
+          description="Are you sure you want to delete this journey update? This action cannot be undone."
+        />
+      )}
     </Card>
   );
 }

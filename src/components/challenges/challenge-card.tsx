@@ -29,6 +29,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/context/auth-context";
 import { db } from "@/lib/firebase/config";
 import { deleteDoc, doc, updateDoc } from "firebase/firestore";
+import { DeleteConfirmationDialog } from "@/components/shared/delete-confirmation-dialog";
 
 interface ChallengeCardProps {
   challenge: ChallengeWithProgress;
@@ -43,6 +44,7 @@ export function ChallengeCard({
 }: ChallengeCardProps) {
   const [isLoading, setIsLoading] = useState(false);
   const { currentUser } = useAuth();
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   const calculateProgress = () => {
     if (challenge.isOwner) {
@@ -142,8 +144,6 @@ export function ChallengeCard({
 
   const handleDeleteChallenge = async () => {
     if (!currentUser || !challenge.isOwner) return;
-
-    if (!confirm("Are you sure you want to delete this challenge?")) return;
 
     try {
       setIsLoading(true);
@@ -248,7 +248,7 @@ export function ChallengeCard({
 
             {challenge.isOwner && (
               <DropdownMenuItem
-                onClick={handleDeleteChallenge}
+                onClick={() => setDeleteDialogOpen(true)}
                 className="text-destructive cursor-pointer"
               >
                 <Trash2 className="mr-2 h-4 w-4" />
@@ -258,6 +258,15 @@ export function ChallengeCard({
           </DropdownMenuContent>
         </DropdownMenu>
       </CardFooter>
+      {deleteDialogOpen && (
+        <DeleteConfirmationDialog
+          open={deleteDialogOpen}
+          onOpenChange={setDeleteDialogOpen}
+          onConfirm={handleDeleteChallenge}
+          title="Delete Challenge"
+          description="Are you sure you want to delete this challenge? This action cannot be undone."
+        />
+      )}
     </Card>
   );
 }

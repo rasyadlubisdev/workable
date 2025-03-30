@@ -224,14 +224,29 @@ export function ChallengeDetails({
   };
 
   const calculateProgress = () => {
-    if (!challenge.milestones || challenge.milestones.length === 0) return 0;
+    if (challenge.isOwner) {
+      if (!challenge.milestones || challenge.milestones.length === 0) return 0;
 
-    const completedMilestones = challenge.milestones.filter(
-      (m: any) => m.completed
-    ).length;
-    return Math.round(
-      (completedMilestones / challenge.milestones.length) * 100
-    );
+      const completedMilestones = challenge.milestones.filter(
+        (m: any) => m.completed
+      ).length;
+      return Math.round(
+        (completedMilestones / challenge.milestones.length) * 100
+      );
+    } else {
+      if (
+        !challenge.userProgress?.milestones ||
+        challenge.userProgress.milestones.length === 0
+      )
+        return 0;
+
+      const completedMilestones = challenge.userProgress.milestones.filter(
+        (m: any) => m.completed
+      ).length;
+      return Math.round(
+        (completedMilestones / challenge.userProgress.milestones.length) * 100
+      );
+    }
   };
 
   const markChallengeAsCompleted = async () => {
