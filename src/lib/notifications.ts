@@ -61,36 +61,36 @@ export async function createChallengeReminderNotification(
   }
 }
 
-export async function createMessageNotification(
-  userId: string,
-  senderId: string,
-  chatId: string,
-  messagePreview: string
-) {
-  try {
-    const userDoc = await getDoc(doc(db, "users", senderId));
-    if (!userDoc.exists()) return;
+// export async function createMessageNotification(
+//   userId: string,
+//   senderId: string,
+//   chatId: string,
+//   messagePreview: string
+// ) {
+//   try {
+//     const userDoc = await getDoc(doc(db, "users", senderId));
+//     if (!userDoc.exists()) return;
 
-    const userData = userDoc.data();
+//     const userData = userDoc.data();
 
-    const notification: Omit<Notification, "id"> = {
-      userId,
-      type: "message",
-      title: "New Message",
-      message: `${userData.username}: ${messagePreview.substring(0, 40)}${
-        messagePreview.length > 40 ? "..." : ""
-      }`,
-      read: false,
-      createdAt: serverTimestamp(),
-      actionUrl: `/messages/${chatId}`,
-      actionLabel: "Reply",
-      senderId,
-      senderName: userData.username,
-      senderImage: userData.profileImage || "",
-    };
+//     const notification: Omit<Notification, "id"> = {
+//       userId,
+//       type: "message",
+//       title: "New Message",
+//       message: `${userData.username}: ${messagePreview.substring(0, 40)}${
+//         messagePreview.length > 40 ? "..." : ""
+//       }`,
+//       read: false,
+//       createdAt: serverTimestamp(),
+//       actionUrl: `/messages/${chatId}`,
+//       actionLabel: "Reply",
+//       senderId,
+//       senderName: userData.username,
+//       senderImage: userData.profileImage || "",
+//     };
 
-    await addDoc(collection(db, "notifications"), notification);
-  } catch (error) {
-    console.error("Error creating message notification:", error);
-  }
-}
+//     await addDoc(collection(db, "notifications"), notification);
+//   } catch (error) {
+//     console.error("Error creating message notification:", error);
+//   }
+// }

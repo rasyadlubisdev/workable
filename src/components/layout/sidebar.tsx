@@ -17,6 +17,7 @@ import {
   MessageSquare,
 } from "lucide-react";
 import { UnreadBadge } from "@/components/messaging/unread-badge";
+import { UnreadMessageBadge } from "../messaging/unread-message-badge";
 
 interface SidebarProps {
   collapsed: boolean;
@@ -89,13 +90,13 @@ export function Sidebar({ collapsed, setCollapsed, pathname }: SidebarProps) {
                 pathname === item.href
                   ? "bg-muted hover:bg-muted"
                   : "hover:bg-transparent hover:underline",
-                "justify-start",
+                "justify-start relative",
                 collapsed ? "px-2" : ""
               )}
             >
               <item.icon className={cn("h-5 w-5", collapsed ? "" : "mr-2")} />
               {!collapsed && <span className="flex-1">{item.label}</span>}
-              {item.icon === MessageSquare && <UnreadBadge />}
+              {item.icon === MessageSquare && <UnreadMessageBadge />}
             </Link>
           ))}
         </div>
