@@ -11,7 +11,7 @@ export default function ConnectPage() {
       <h1 className="text-3xl font-bold tracking-tight">Connect</h1>
 
       <Tabs defaultValue="people" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="people">People</TabsTrigger>
           <TabsTrigger value="challenges">Challenges</TabsTrigger>
         </TabsList>

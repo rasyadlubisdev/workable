@@ -300,14 +300,14 @@ export function PublicChallenges() {
         </div>
       ) : (
         <>
-          <h3 className="text-lg font-medium flex items-center">
+          {/* <h3 className="text-lg font-medium flex items-center">
             <Sparkles className="h-5 w-5 mr-2 text-yellow-500" />
             Smart Recommendations
           </h3>
           <p className="text-sm text-muted-foreground mb-4">
             Connections sorted by compatibility with your interests, goals, and
             activity
-          </p>
+          </p> */}
 
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {filteredChallenges.map((challenge) => {

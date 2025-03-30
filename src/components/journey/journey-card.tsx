@@ -73,11 +73,12 @@ export function JourneyCard({
         <p className="whitespace-pre-wrap mb-4">{journey.content}</p>
 
         {journey.imageURL && (
-          <div className="mt-2 mb-4 rounded-md overflow-hidden">
+          <div className="mt-2 mb-4 rounded-md overflow-hidden relative max-h-[400px] w-full flex justify-center">
             <img
               src={journey.imageURL}
               alt={journey.title}
-              className="w-full object-cover max-h-[300px]"
+              className="object-contain max-w-full max-h-[400px]"
+              loading="lazy"
             />
           </div>
         )}
@@ -108,7 +109,7 @@ export function JourneyCard({
 
         <CommentSection
           journeyId={journey.id}
-          comments={journey.comments || []}
+          initialComments={journey.comments || []}
         />
       </CardFooter>
     </Card>

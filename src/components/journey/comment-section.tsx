@@ -1,3 +1,5 @@
+"use client";
+
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/auth-context";
 import { db } from "@/lib/firebase/config";
@@ -7,6 +9,7 @@ import {
   arrayUnion,
   getDoc,
   Timestamp,
+  onSnapshot,
 } from "firebase/firestore";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -33,14 +36,12 @@ interface Comment {
 
 interface CommentSectionProps {
   journeyId: string;
-  comments: Comment[];
-  onUpdate?: (comments: Comment[]) => void;
+  initialComments?: Comment[];
 }
 
 export function CommentSection({
   journeyId,
-  comments,
-  onUpdate,
+  initialComments = [],
 }: CommentSectionProps) {
   const { currentUser } = useAuth();
   const [isExpanded, setIsExpanded] = useState(false);
@@ -51,6 +52,7 @@ export function CommentSection({
     username: string;
     profileImage: string;
   } | null>(null);
+  const [comments, setComments] = useState<Comment[]>(initialComments);
 
   useEffect(() => {
     if (currentUser) {
@@ -58,9 +60,25 @@ export function CommentSection({
     }
   }, [currentUser]);
 
+  useEffect(() => {
+    const journeyRef = doc(db, "journeys", journeyId);
+    const unsubscribe = onSnapshot(journeyRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        if (data.comments) {
+          setComments(data.comments);
+        }
+      }
+    });
+
+    return () => unsubscribe();
+  }, [journeyId]);
+
   const fetchUserData = async () => {
+    if (!currentUser) return;
+
     try {
-      const userDoc = await getDoc(doc(db, "users", currentUser!.uid));
+      const userDoc = await getDoc(doc(db, "users", currentUser.uid));
       if (userDoc.exists()) {
         const data = userDoc.data();
         setUserData({
@@ -92,14 +110,10 @@ export function CommentSection({
 
       const journeyRef = doc(db, "journeys", journeyId);
       await updateDoc(journeyRef, {
-        comments: arrayUnion(newComment),
+        comments: updatedComments,
       });
 
       setCommentText("");
-
-      if (onUpdate) {
-        onUpdate(updatedComments);
-      }
     } catch (error) {
       console.error("Error adding comment:", error);
       toast.error("Failed to post comment. Please try again.", {
@@ -147,6 +161,12 @@ export function CommentSection({
                   value={commentText}
                   onChange={(e) => setCommentText(e.target.value)}
                   disabled={isSubmitting}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSubmitComment();
+                    }
+                  }}
                 />
                 <Button
                   size="icon"

@@ -52,7 +52,7 @@ export function Sidebar({ collapsed, setCollapsed, pathname }: SidebarProps) {
         collapsed ? "w-16" : "w-64"
       )}
     >
-      <div className="h-full px-3 py-4 flex flex-col">
+      <div className="h-screen px-3 py-4 flex flex-col">
         <div className="flex items-center justify-between mb-6">
           <Link
             href="/"
