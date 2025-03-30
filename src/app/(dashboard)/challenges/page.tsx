@@ -29,7 +29,11 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { format, isPast } from "date-fns";
-import { Challenge } from "@/types/challenge";
+import {
+  Challenge,
+  ChallengeWithProgress,
+  UserProgress,
+} from "@/types/challenge";
 import { ChallengeDetails } from "@/components/challenges/challenge-details";
 import { ChallengeCard } from "@/components/challenges/challenge-card";
 
@@ -68,7 +72,7 @@ export default function ChallengesPage() {
         id: doc.id,
         ...doc.data(),
         isOwner: true,
-      })) as Challenge[];
+      })) as ChallengeWithProgress[];
 
       allChallenges = [...ownedChallenges];
 
@@ -77,41 +81,45 @@ export default function ChallengesPage() {
         participatingChallengesRef,
         where("participants", "array-contains", currentUser.uid),
         where("userId", "!=", currentUser.uid),
-        where("status", "==", status),
-        orderBy("userId"),
-        orderBy("endDate", "asc")
+        orderBy("userId")
       );
 
       const participatingSnap = await getDocs(participatingQuery);
-      const participatingChallenges = participatingSnap.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-        isOwner: false,
-      })) as Challenge[];
 
-      allChallenges = [...allChallenges, ...participatingChallenges];
-
-      const userProgressPromises = allChallenges.map(async (challenge) => {
-        if (!challenge.isOwner) {
+      const userProgressPromises = participatingSnap.docs.map(
+        async (challengeDoc) => {
+          const challengeData = challengeDoc.data();
           const progressRef = doc(
             db,
             "userProgress",
-            `${currentUser.uid}_${challenge.id}`
+            `${currentUser.uid}_${challengeDoc.id}`
           );
           const progressSnap = await getDoc(progressRef);
 
           if (progressSnap.exists()) {
-            return {
-              ...challenge,
-              userProgress: progressSnap.data(),
-            };
-          }
-        }
-        return challenge;
-      });
+            const progressData = progressSnap.data() as UserProgress;
 
-      const challengesWithProgress = await Promise.all(userProgressPromises);
-      setChallenges(challengesWithProgress);
+            const userStatus = progressData.status || "active";
+            if (userStatus === status) {
+              return {
+                id: challengeDoc.id,
+                ...challengeData,
+                isOwner: false,
+                userProgress: progressData,
+              };
+            }
+          }
+          return null;
+        }
+      );
+
+      const participatedChallenges = (
+        await Promise.all(userProgressPromises)
+      ).filter(Boolean) as ChallengeWithProgress[];
+
+      allChallenges = [...allChallenges, ...participatedChallenges];
+
+      setChallenges(allChallenges);
     } catch (error) {
       console.error("Error fetching challenges:", error);
     } finally {

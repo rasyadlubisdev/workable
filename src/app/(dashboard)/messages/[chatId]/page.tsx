@@ -91,22 +91,47 @@ export default function ChatPage({
     scrollToBottom();
   }, [messages]);
 
-  const markMessagesAsRead = async (msgs: Message[]) => {
-    if (!currentUser) return;
+  const markMessagesAsRead = async (msgs?: Message[]) => {
+    if (!currentUser || !chat) return;
 
-    const unread = msgs.filter(
-      (m) => !m.read && m.senderId !== currentUser.uid
-    );
+    try {
+      const unreadMessages = messages.filter(
+        (msg) => !msg.read && msg.senderId !== currentUser.uid
+      );
 
-    if (unread.length === 0) return;
+      if (unreadMessages.length === 0) return;
 
-    const batch = unread.map(async (msg) => {
-      const msgRef = doc(db, "chats", chatId, "messages", msg.id);
-      await updateDoc(msgRef, { read: true });
-    });
+      const chatRef = doc(db, "chats", chatId);
 
-    await Promise.all(batch);
+      const chatDoc = await getDoc(chatRef);
+      if (!chatDoc.exists()) return;
+
+      const currentMessages = chatDoc.data().messages || [];
+
+      const updatedMessages = currentMessages.map(
+        (msg: { senderId: string }) => {
+          if (msg.senderId !== currentUser.uid) {
+            return { ...msg, read: true };
+          }
+          return msg;
+        }
+      );
+
+      await updateDoc(chatRef, {
+        messages: updatedMessages,
+      });
+    } catch (error) {
+      console.error("Error marking messages as read:", error);
+    }
   };
+
+  useEffect(() => {
+    if (
+      messages.some((msg) => !msg.read && msg.senderId !== currentUser?.uid)
+    ) {
+      markMessagesAsRead();
+    }
+  }, [messages, currentUser]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });

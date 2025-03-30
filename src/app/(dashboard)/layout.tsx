@@ -59,7 +59,7 @@ export default function DashboardLayout({
         }`}
       >
         <TopNav onToggleSidebar={toggleSidebar} />
-        <main className="container p-4 md:p-8 mt-16 pb-20 md:pb-8">
+        <main className="container mx-auto p-4 md:p-8 mt-16 pb-20 md:pb-8">
           {children}
         </main>
       </div>

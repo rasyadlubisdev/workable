@@ -20,6 +20,7 @@ export interface Chat {
 }
 
 export interface ChatWithUserDetails extends Chat {
+  unreadCount: number;
   otherUser: {
     id: string;
     username: string;

@@ -35,6 +35,7 @@ export interface UserProgress {
   milestones: Milestone[];
   lastUpdated: any;
   joinedAt: any;
+  status?: "active" | "completed";
 }
 
 export interface ChallengeWithProgress extends Challenge {
