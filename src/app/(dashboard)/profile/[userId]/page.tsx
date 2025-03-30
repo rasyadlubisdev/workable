@@ -25,7 +25,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Loader2, Calendar, Mail, ArrowLeft } from "lucide-react";
+import { Loader2, Calendar, Mail, ArrowLeft, Crown } from "lucide-react";
 import { format } from "date-fns";
 import { useRouter } from "next/navigation";
 import { JourneyCard } from "@/components/journey/journey-card";
@@ -75,7 +75,6 @@ export default function UserProfilePage({
       setUserData(userDoc.data());
 
       fetchJourneys();
-
       fetchChallenges();
     } catch (error) {
       console.error("Error fetching user data:", error);
@@ -118,23 +117,35 @@ export default function UserProfilePage({
     try {
       setChallengesLoading(true);
 
-      const challengesRef = collection(db, "challenges");
-      const challengesQuery = query(
-        challengesRef,
+      const allChallenges: any[] = [];
+
+      const createdQuery = query(
+        collection(db, "challenges"),
         where("userId", "==", userId),
         where("isPublic", "==", true),
-        orderBy("createdAt", "desc"),
-        limit(10)
+        orderBy("createdAt", "desc")
       );
 
-      const querySnapshot = await getDocs(challengesQuery);
+      const createdSnap = await getDocs(createdQuery);
 
-      const challengeEntries = querySnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
+      createdSnap.docs.forEach((snap) => {
+        allChallenges.push({ id: snap.id, ...snap.data(), isOwner: true });
+      });
 
-      setChallenges(challengeEntries);
+      const joinedQuery = query(
+        collection(db, "challenges"),
+        where("participants", "array-contains", userId)
+      );
+      const joinedSnap = await getDocs(joinedQuery);
+
+      joinedSnap.docs.forEach((snap) => {
+        const data = snap.data();
+        if (data.userId !== userId && data.isPublic) {
+          allChallenges.push({ id: snap.id, ...data, isOwner: false });
+        }
+      });
+
+      setChallenges(allChallenges);
     } catch (error) {
       console.error("Error fetching challenges:", error);
     } finally {
@@ -197,7 +208,6 @@ export default function UserProfilePage({
                 <JourneyCard
                   key={journey.id}
                   journey={journey}
-                  // onView={() => {}}
                   showActions={false}
                 />
               ))}
@@ -219,16 +229,21 @@ export default function UserProfilePage({
               {challenges.map((challenge) => (
                 <Card key={challenge.id} className="overflow-hidden">
                   <CardHeader className="pb-2">
-                    <div className="flex items-start justify-between">
-                      <CardTitle className="text-lg">
+                    <div className="card-challenge">
+                      <CardTitle className="text-lg flex gap-2">
+                        {challenge.isOwner && (
+                          <span className="text-yellow-500">
+                            <Crown className="h-4 w-4 mt-1" />
+                          </span>
+                        )}
                         {challenge.title}
                       </CardTitle>
-                      <Badge>{challenge.category}</Badge>
                     </div>
                     <CardDescription>
                       {challenge.createdAt &&
                         format(new Date(challenge.createdAt.toDate()), "PP")}
                     </CardDescription>
+                    <Badge>{challenge.category}</Badge>
                   </CardHeader>
                   <CardContent>
                     <p className="text-sm line-clamp-3 mb-3">

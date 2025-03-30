@@ -176,36 +176,36 @@ export function ChallengeCard({
   return (
     <Card className="overflow-hidden flex flex-col">
       <CardHeader className="pb-2">
-        <div className="flex items-start justify-between">
+        <div className="card-challenge">
           <div>
-            <div className="flex items-center gap-2">
-              <CardTitle className="text-lg">{challenge.title}</CardTitle>
+            <div className="flex gap-2 mb-2">
               {challenge.isOwner && (
                 <span className="text-yellow-500">
-                  <Crown className="h-4 w-4" />
+                  <Crown className="h-4 w-4 mt-1" />
                 </span>
               )}
+              <CardTitle className="text-lg">{challenge.title}</CardTitle>
             </div>
             <CardDescription>
               {format(new Date(challenge.endDate.toDate()), "PPP")}
             </CardDescription>
+            <Badge
+              variant={
+                isPast(new Date(challenge.endDate.toDate()))
+                  ? "destructive"
+                  : getStatusLabel() === "completed"
+                  ? "outline"
+                  : "default"
+              }
+              className={
+                getStatusLabel() === "completed"
+                  ? "bg-green-100 text-green-800 border-green-300"
+                  : ""
+              }
+            >
+              {getStatusLabel() === "completed" ? "Completed" : getTimeLeft()}
+            </Badge>
           </div>
-          <Badge
-            variant={
-              isPast(new Date(challenge.endDate.toDate()))
-                ? "destructive"
-                : getStatusLabel() === "completed"
-                ? "outline"
-                : "default"
-            }
-            className={
-              getStatusLabel() === "completed"
-                ? "bg-green-100 text-green-800 border-green-300"
-                : ""
-            }
-          >
-            {getStatusLabel() === "completed" ? "Completed" : getTimeLeft()}
-          </Badge>
         </div>
       </CardHeader>
 

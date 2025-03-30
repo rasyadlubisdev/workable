@@ -12,6 +12,7 @@ import {
   doc,
   getDoc,
   Timestamp,
+  serverTimestamp,
 } from "firebase/firestore";
 import {
   Card,
@@ -29,6 +30,7 @@ import { format, isToday, isYesterday } from "date-fns";
 import { ChatWithUserDetails } from "@/types/chat";
 import Link from "next/link";
 import { UnreadBadge } from "@/components/messaging/unread-badge";
+import { UnreadMessageBadge } from "@/components/messaging/unread-message-badge";
 import { Badge } from "@/components/ui/badge";
 
 export default function MessagesPage() {
@@ -54,44 +56,58 @@ export default function MessagesPage() {
       async (snapshot) => {
         const chatsList: ChatWithUserDetails[] = [];
 
-        for (const chatDoc of snapshot.docs) {
-          const chatData = chatDoc.data();
+        for (const docSnapshot of snapshot.docs) {
+          const chatData = docSnapshot.data();
 
           const otherUserId = chatData.participants.find(
             (id: string) => id !== currentUser.uid
           );
 
           if (otherUserId) {
-            const userRef = doc(db, "users", otherUserId);
-            const userDoc = await getDoc(userRef);
+            try {
+              const userRef = doc(db, "users", otherUserId);
+              const userDoc = await getDoc(userRef);
 
-            if (userDoc.exists()) {
-              const userData: any = userDoc.data();
+              if (userDoc.exists()) {
+                const userData = userDoc.data();
 
-              const messages = chatData.messages || [];
-              const unreadCount = messages.filter(
-                (msg: any) => !msg.read && msg.senderId !== currentUser.uid
-              ).length;
+                const messages = chatData.messages || [];
+                const unreadMessages = messages.filter(
+                  (msg: any) => !msg.read && msg.senderId !== currentUser.uid
+                );
 
-              chatsList.push({
-                id: chatDoc.id,
-                ...chatData,
-                unreadCount,
-                otherUser: {
-                  id: otherUserId,
-                  username: userData.username || "Unknown User",
-                  profileImage: userData.profileImage || "",
-                },
-              } as ChatWithUserDetails);
+                chatsList.push({
+                  id: docSnapshot.id,
+                  ...chatData,
+                  otherUser: {
+                    id: otherUserId,
+                    username: userData.username || "Unknown User",
+                    profileImage: userData.profileImage || "",
+                  },
+                  unreadCount: unreadMessages.length,
+                  participants: chatData.participants || [],
+                  messages: chatData.messages || [],
+                  createdAt: chatData.createdAt || serverTimestamp(),
+                  updatedAt: chatData.updatedAt || serverTimestamp(),
+                });
+              }
+            } catch (error) {
+              console.error("Error fetching user details:", error);
             }
           }
         }
+
+        chatsList.sort((a, b) => {
+          const aTime = a.updatedAt?.toDate().getTime() || 0;
+          const bTime = b.updatedAt?.toDate().getTime() || 0;
+          return bTime - aTime;
+        });
 
         setChats(chatsList);
         setLoading(false);
       },
       (error) => {
-        console.error("Error fetching chats:", error);
+        console.error("Error in chat listener:", error);
         setLoading(false);
       }
     );
@@ -195,15 +211,19 @@ export default function MessagesPage() {
                       >
                         {chat.lastMessage?.text || "Start a conversation"}
                       </p>
-                      {chat.unreadCount > 0 && (
+                      {/* {chat.unreadCount > 0 && (
                         <Badge
                           variant="destructive"
                           className="ml-2 h-5 min-w-[20px] rounded-full flex items-center justify-center"
                         >
                           {chat.unreadCount}
                         </Badge>
-                      )}
+                      )} */}
                     </div>
+                    <UnreadMessageBadge
+                      chatId={chat.id}
+                      className="absolute right-2 top-2"
+                    />
                   </div>
                 </div>
               </Link>

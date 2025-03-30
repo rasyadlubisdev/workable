@@ -41,4 +41,5 @@ export interface UserProgress {
 export interface ChallengeWithProgress extends Challenge {
   userProgress?: UserProgress;
   isOwner: boolean;
+  unreadCount?: number;
 }

@@ -168,9 +168,7 @@ export function PublicChallenges() {
       const challengeDoc = await getDoc(challengeRef);
 
       if (!challengeDoc.exists()) {
-        toast.error("Challenge not found.", {
-          description: "Error",
-        });
+        toast.error("Challenge not found.");
         return;
       }
 
@@ -180,9 +178,7 @@ export function PublicChallenges() {
         challengeData.participants &&
         challengeData.participants.includes(currentUser.uid)
       ) {
-        toast("You are already a participant in this challenge.", {
-          description: "Already joined",
-        });
+        toast("You are already a participant in this challenge.");
         return;
       }
 
@@ -199,14 +195,13 @@ export function PublicChallenges() {
             ...milestone,
             completed: false,
           })),
+          status: "active",
           lastUpdated: serverTimestamp(),
           joinedAt: serverTimestamp(),
         }
       );
 
-      toast.success(`You've joined "${challengeData.title}"`, {
-        description: "Success!",
-      });
+      toast.success(`You've joined "${challengeData.title}"`);
 
       setChallenges((prev) =>
         prev.map((challenge) =>
@@ -220,9 +215,7 @@ export function PublicChallenges() {
       );
     } catch (error) {
       console.error("Error joining challenge:", error);
-      toast.error("There was a problem joining the challenge.", {
-        description: "Error",
-      });
+      toast.error("There was a problem joining the challenge.");
     } finally {
       setJoiningId(null);
     }

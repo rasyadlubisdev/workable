@@ -14,6 +14,10 @@ import {
   orderBy,
   serverTimestamp,
   Timestamp,
+  arrayUnion,
+  getDocs,
+  writeBatch,
+  where,
 } from "firebase/firestore";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -23,6 +27,9 @@ import { format, isToday, isYesterday } from "date-fns";
 import { Chat, Message } from "@/types/chat";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { v4 as uuidv4 } from "uuid";
+import { toast } from "sonner";
+
 // import { createMessageNotification } from "@/lib/notifications";
 
 export default function ChatPage({
@@ -91,47 +98,77 @@ export default function ChatPage({
     scrollToBottom();
   }, [messages]);
 
+  // const markMessagesAsRead = async (msgs?: Message[]) => {
+  //   if (!currentUser || !chat) return;
+
+  //   try {
+  //     const unreadMessages = messages.filter(
+  //       (msg) => !msg.read && msg.senderId !== currentUser.uid
+  //     );
+
+  //     if (unreadMessages.length === 0) return;
+
+  //     const chatRef = doc(db, "chats", chatId);
+
+  //     const chatDoc = await getDoc(chatRef);
+  //     if (!chatDoc.exists()) return;
+
+  //     const currentMessages = chatDoc.data().messages || [];
+
+  //     const updatedMessages = currentMessages.map(
+  //       (msg: { senderId: string }) => {
+  //         if (msg.senderId !== currentUser.uid) {
+  //           return { ...msg, read: true };
+  //         }
+  //         return msg;
+  //       }
+  //     );
+
+  //     await updateDoc(chatRef, {
+  //       messages: updatedMessages,
+  //     });
+  //   } catch (error) {
+  //     console.error("Error marking messages as read:", error);
+  //   }
+  // };
+
   const markMessagesAsRead = async (msgs?: Message[]) => {
-    if (!currentUser || !chat) return;
+    if (!currentUser) return;
 
     try {
-      const unreadMessages = messages.filter(
-        (msg) => !msg.read && msg.senderId !== currentUser.uid
+      const messagesRef = collection(db, "chats", chatId, "messages");
+      const q = query(
+        messagesRef,
+        where("read", "==", false),
+        where("senderId", "!=", currentUser.uid)
       );
 
-      if (unreadMessages.length === 0) return;
+      const snapshot = await getDocs(q);
+      const batch = writeBatch(db);
 
-      const chatRef = doc(db, "chats", chatId);
-
-      const chatDoc = await getDoc(chatRef);
-      if (!chatDoc.exists()) return;
-
-      const currentMessages = chatDoc.data().messages || [];
-
-      const updatedMessages = currentMessages.map(
-        (msg: { senderId: string }) => {
-          if (msg.senderId !== currentUser.uid) {
-            return { ...msg, read: true };
-          }
-          return msg;
-        }
-      );
-
-      await updateDoc(chatRef, {
-        messages: updatedMessages,
+      snapshot.docs.forEach((docSnap) => {
+        batch.update(docSnap.ref, { read: true });
       });
+
+      if (!snapshot.empty) {
+        await batch.commit();
+      }
     } catch (error) {
       console.error("Error marking messages as read:", error);
     }
   };
 
   useEffect(() => {
-    if (
-      messages.some((msg) => !msg.read && msg.senderId !== currentUser?.uid)
-    ) {
-      markMessagesAsRead();
+    if (currentUser && chat && messages.length > 0) {
+      const hasUnread = messages.some(
+        (msg) => !msg.read && msg.senderId !== currentUser.uid
+      );
+
+      if (hasUnread) {
+        markMessagesAsRead();
+      }
     }
-  }, [messages, currentUser]);
+  }, [currentUser, chat, messages]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -143,40 +180,29 @@ export default function ChatPage({
     try {
       setSending(true);
 
-      const messageData = {
+      const message = {
         senderId: currentUser.uid,
         text: newMessage.trim(),
         createdAt: serverTimestamp(),
         read: false,
       };
 
-      await addDoc(collection(db, "chats", chatId, "messages"), messageData);
+      await addDoc(collection(db, "chats", chatId, "messages"), message);
 
       const chatRef = doc(db, "chats", chatId);
       await updateDoc(chatRef, {
         lastMessage: {
-          text: newMessage.trim(),
+          text: message.text,
           createdAt: serverTimestamp(),
-          senderId: currentUser.uid,
+          senderId: message.senderId,
         },
         updatedAt: serverTimestamp(),
       });
 
       setNewMessage("");
-
-      // const recipientId = chat.participants.find(
-      //   (id) => id !== currentUser.uid
-      // );
-      // if (recipientId) {
-      //   await createMessageNotification(
-      //     recipientId,
-      //     currentUser.uid,
-      //     chatId,
-      //     newMessage.trim()
-      //   );
-      // }
     } catch (error) {
       console.error("Error sending message:", error);
+      toast.error("Failed to send message. Please try again.");
     } finally {
       setSending(false);
     }

@@ -10,9 +10,11 @@ import {
   orderBy,
   getDocs,
   limit,
+  getDoc,
+  doc,
 } from "firebase/firestore";
 import { useEffect, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Crown, Loader2 } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -30,6 +32,7 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (!currentUser) return;
+
     const fetchUserData = async () => {
       try {
         setJourneysLoading(true);
@@ -41,33 +44,56 @@ export default function ProfilePage() {
           limit(10)
         );
         const journeysSnap = await getDocs(journeysQuery);
-        const journeysData: any[] = [];
-        journeysSnap.forEach((doc) => {
-          journeysData.push({
-            id: doc.id,
-            ...doc.data(),
-          });
-        });
+        const journeysData = journeysSnap.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
         setRecentJourneys(journeysData);
         setJourneysLoading(false);
 
         setChallengesLoading(true);
-        const challengesRef = collection(db, "challenges");
-        const challengesQuery = query(
-          challengesRef,
+
+        const ownedQuery = query(
+          collection(db, "challenges"),
           where("userId", "==", currentUser.uid),
-          orderBy("createdAt", "desc"),
-          limit(10)
+          orderBy("createdAt", "desc")
         );
-        const challengesSnap = await getDocs(challengesQuery);
-        const challengesData: any[] = [];
-        challengesSnap.forEach((doc) => {
-          challengesData.push({
-            id: doc.id,
-            ...doc.data(),
-          });
-        });
-        setRecentChallenges(challengesData);
+        const ownedSnap = await getDocs(ownedQuery);
+        const ownedChallenges = ownedSnap.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+          isOwner: true,
+        }));
+
+        const joinedQuery = query(
+          collection(db, "challenges"),
+          where("participants", "array-contains", currentUser.uid)
+        );
+        const joinedSnap = await getDocs(joinedQuery);
+        const joinedChallengesWithProgress = await Promise.all(
+          joinedSnap.docs.map(async (challengeDoc) => {
+            if (challengeDoc.data().userId === currentUser.uid) return null; // skip if user is owner
+            const progressRef = doc(
+              db,
+              "userProgress",
+              `${currentUser.uid}_${challengeDoc.id}`
+            );
+            const progressSnap = await getDoc(progressRef);
+            return {
+              id: challengeDoc.id,
+              ...challengeDoc.data(),
+              isOwner: false,
+              userProgress: progressSnap.exists() ? progressSnap.data() : null,
+            };
+          })
+        );
+
+        const allChallenges = [
+          ...ownedChallenges,
+          ...joinedChallengesWithProgress.filter(Boolean),
+        ];
+
+        setRecentChallenges(allChallenges);
         setChallengesLoading(false);
       } catch (error) {
         console.error("Error fetching user data:", error);
@@ -75,6 +101,7 @@ export default function ProfilePage() {
         setChallengesLoading(false);
       }
     };
+
     fetchUserData();
   }, [currentUser]);
 
@@ -156,27 +183,37 @@ export default function ProfilePage() {
                   {recentChallenges.map((challenge) => (
                     <div key={challenge.id} className="border rounded-lg p-4">
                       <div className="flex justify-between items-start">
-                        <h3 className="font-semibold">{challenge.title}</h3>
-                        <span
-                          className={`text-xs px-2 py-1 rounded-full ${
-                            challenge.status === "active"
-                              ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100"
-                              : "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100"
-                          }`}
-                        >
-                          {challenge.status}
-                        </span>
+                        <div className="flex gap-2">
+                          {challenge.isOwner && (
+                            <span className="text-yellow-500">
+                              <Crown className="h-4 w-4 mt-1" />
+                            </span>
+                          )}
+                          <h3 className="font-semibold">{challenge.title}</h3>
+                        </div>
                       </div>
                       <p className="text-sm text-muted-foreground mt-1">
-                        {" "}
                         {new Date(
                           challenge.createdAt?.toDate()
                         ).toLocaleDateString()}{" "}
                         -{" "}
                         {new Date(
                           challenge.endDate?.toDate()
-                        ).toLocaleDateString()}{" "}
+                        ).toLocaleDateString()}
                       </p>
+                      <span
+                        className={`text-xs px-2 py-1 rounded-full ${
+                          challenge.userProgress?.status === "completed" ||
+                          challenge.status === "completed"
+                            ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100"
+                            : "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100"
+                        }`}
+                      >
+                        {challenge.userProgress?.status === "completed" ||
+                        challenge.status === "completed"
+                          ? "Completed"
+                          : "Active"}
+                      </span>
                       <p className="mt-2 text-sm line-clamp-2">
                         {challenge.description}
                       </p>
