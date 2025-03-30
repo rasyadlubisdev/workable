@@ -34,6 +34,8 @@ import {
   updateDoc,
   arrayUnion,
   doc,
+  setDoc,
+  serverTimestamp,
 } from "firebase/firestore";
 import { useAuth } from "@/context/auth-context";
 import { toast } from "sonner";
@@ -84,8 +86,8 @@ export function JoinChallengeModal() {
 
       const challengeDoc = querySnapshot.docs[0];
       const challengeData = challengeDoc.data();
+      const challengeId = challengeDoc.id;
 
-      // Check if user is already a participant
       if (
         challengeData.participants &&
         challengeData.participants.includes(currentUser.uid)
@@ -98,11 +100,24 @@ export function JoinChallengeModal() {
         return;
       }
 
-      // Add user to participants
-      const challengeRef = doc(db, "challenges", challengeDoc.id);
+      const challengeRef = doc(db, "challenges", challengeId);
       await updateDoc(challengeRef, {
         participants: arrayUnion(currentUser.uid),
       });
+
+      await setDoc(
+        doc(db, "userProgress", `${currentUser.uid}_${challengeId}`),
+        {
+          userId: currentUser.uid,
+          challengeId: challengeId,
+          milestones: challengeData.milestones.map((milestone: any) => ({
+            ...milestone,
+            completed: false,
+          })),
+          lastUpdated: serverTimestamp(),
+          joinedAt: serverTimestamp(),
+        }
+      );
 
       toast.success(`You've joined "${challengeData.title}"`, {
         description: "Success!",
