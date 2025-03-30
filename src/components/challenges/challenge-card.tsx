@@ -165,6 +165,14 @@ export function ChallengeCard({
     }
   };
 
+  const getStatusLabel = () => {
+    if (challenge.isOwner) {
+      return challenge.status;
+    } else {
+      return challenge.userProgress?.status || "active";
+    }
+  };
+
   return (
     <Card className="overflow-hidden flex flex-col">
       <CardHeader className="pb-2">
@@ -186,10 +194,17 @@ export function ChallengeCard({
             variant={
               isPast(new Date(challenge.endDate.toDate()))
                 ? "destructive"
-                : "outline"
+                : getStatusLabel() === "completed"
+                ? "outline"
+                : "default"
+            }
+            className={
+              getStatusLabel() === "completed"
+                ? "bg-green-100 text-green-800 border-green-300"
+                : ""
             }
           >
-            {getTimeLeft()}
+            {getStatusLabel() === "completed" ? "Completed" : getTimeLeft()}
           </Badge>
         </div>
       </CardHeader>

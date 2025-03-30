@@ -114,6 +114,7 @@ export function JoinChallengeModal() {
             ...milestone,
             completed: false,
           })),
+          status: "active",
           lastUpdated: serverTimestamp(),
           joinedAt: serverTimestamp(),
         }

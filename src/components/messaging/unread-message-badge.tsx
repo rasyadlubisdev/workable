@@ -5,8 +5,13 @@ import { useAuth } from "@/context/auth-context";
 import { db } from "@/lib/firebase/config";
 import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
-export function UnreadMessageBadge() {
+interface UnreadMessageBadgeProps {
+  className?: string;
+}
+
+export function UnreadMessageBadge({ className }: UnreadMessageBadgeProps) {
   const { currentUser } = useAuth();
   const [unreadCount, setUnreadCount] = useState(0);
 
@@ -42,7 +47,10 @@ export function UnreadMessageBadge() {
   return (
     <Badge
       variant="destructive"
-      className="absolute -top-1 -right-1 h-5 min-w-[20px] px-1.5 flex items-center justify-center"
+      className={cn(
+        "absolute -top-1 -right-1 h-5 min-w-[20px] px-1.5 flex items-center justify-center",
+        className
+      )}
     >
       {unreadCount > 99 ? "99+" : unreadCount}
     </Badge>

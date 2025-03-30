@@ -255,14 +255,30 @@ export function ChallengeDetails({
     try {
       setIsLoading(true);
 
-      const challengeRef = doc(db, "challenges", challenge.id);
-      await updateDoc(challengeRef, {
-        status: "completed",
-      });
+      if (challenge.isOwner) {
+        const challengeRef = doc(db, "challenges", challenge.id);
+        await updateDoc(challengeRef, {
+          status: "completed",
+        });
 
-      toast.success("Congratulations on completing your challenge!", {
-        description: "Challenge completed",
-      });
+        toast.success("Congratulations on completing your challenge!", {
+          description: "Challenge completed",
+        });
+      } else {
+        const progressRef = doc(
+          db,
+          "userProgress",
+          `${currentUser.uid}_${challenge.id}`
+        );
+        await updateDoc(progressRef, {
+          status: "completed",
+          lastUpdated: serverTimestamp(),
+        });
+
+        toast.success("You've marked this challenge as completed!", {
+          description: "Challenge completed",
+        });
+      }
 
       onUpdate();
     } catch (error) {
@@ -507,7 +523,10 @@ export function ChallengeDetails({
 
         <DialogFooter className="gap-2 sm:gap-0">
           <TooltipProvider>
-            {challenge.status === "active" && (
+            {(challenge.status === "active" && challenge.isOwner) ||
+            (challenge.userProgress &&
+              !challenge.isOwner &&
+              challenge.userProgress.status !== "completed") ? (
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
@@ -528,7 +547,7 @@ export function ChallengeDetails({
                   <p>Mark this challenge as completed</p>
                 </TooltipContent>
               </Tooltip>
-            )}
+            ) : null}
           </TooltipProvider>
 
           <Button variant="secondary" onClick={onClose}>
