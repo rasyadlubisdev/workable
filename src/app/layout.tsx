@@ -1,37 +1,32 @@
-import type { Metadata } from "next";
-import { Inter } from "next/font/google";
-import "./globals.css";
-import { AuthProvider } from "@/context/auth-context";
-import { ThemeProvider } from "@/components/theme-provider";
-import { Toaster } from "sonner";
+import type { Metadata } from "next"
+import { Inter } from "next/font/google"
+import "./globals.css"
+import { Providers } from "./providers"
+import { AccessibilityMenu } from "@/components/common/accessibility"
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "AchieveConnect",
-  description: "Document your journey to becoming a high achiever",
-};
+  title: "WorkAble - Platform Kerja untuk Penyandang Disabilitas",
+  description:
+    "Platform digital berbasis Natural Language Processing dan Computer Vision untuk meningkatkan akses kerja bagi penyandang disabilitas",
+}
 
 export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode;
+  children: React.ReactNode
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={inter.className} suppressHydrationWarning>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-          <AuthProvider>
+    <html lang="id">
+      <body className={`${inter.className} bg-white`} suppressHydrationWarning>
+        <Providers>
+          <div className="mx-auto max-w-md h-full min-h-screen flex flex-col overflow-hidden">
             {children}
-            <Toaster />
-          </AuthProvider>
-        </ThemeProvider>
+            <AccessibilityMenu />
+          </div>
+        </Providers>
       </body>
     </html>
-  );
+  )
 }
