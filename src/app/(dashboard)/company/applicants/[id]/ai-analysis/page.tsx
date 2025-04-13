@@ -15,12 +15,16 @@ import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
 
 interface AIAnalysisPageProps {
-  params: Promise<{
+  params: {
     id: string
-  }>
+  }
 }
 
-export default function AIAnalysisPage({ params }: AIAnalysisPageProps) {
+export default function AIAnalysisPage({
+  params,
+}: {
+  params: Promise<{ id: string }>
+}) {
   const { id: applicationId } = use(params)
   const router = useRouter()
   const { user } = useAuth()
@@ -40,11 +44,11 @@ export default function AIAnalysisPage({ params }: AIAnalysisPageProps) {
 
   const fetchApplicationDetails = async () => {
     try {
-      console.log("MASUK KE FETCH APPLICATION DETAILS 1")
+      console.log("Memulai pengambilan detail aplikasi")
       setLoading(true)
 
       const allJobs = await dataService.getCompanyJobs(user?.id || "")
-      console.log("All jobs fetched:", allJobs.length)
+      console.log("Semua lowongan berhasil diambil:", allJobs.length)
 
       let allApplications: JobApplication[] = []
 
@@ -53,11 +57,14 @@ export default function AIAnalysisPage({ params }: AIAnalysisPageProps) {
           const jobApplications = await dataService.getJobApplications(job.id)
           allApplications = [...allApplications, ...jobApplications]
         } catch (error) {
-          console.error(`Error fetching applications for job ${job.id}:`, error)
+          console.error(
+            `Error saat mengambil aplikasi untuk lowongan ${job.id}:`,
+            error
+          )
         }
       }
 
-      console.log("All applications fetched:", allApplications.length)
+      console.log("Semua aplikasi berhasil diambil:", allApplications.length)
 
       const foundApplication = allApplications.find(
         (app) => app.id === applicationId
@@ -69,11 +76,14 @@ export default function AIAnalysisPage({ params }: AIAnalysisPageProps) {
         return
       }
 
-      console.log("Found application:", foundApplication)
+      console.log("Aplikasi ditemukan:", foundApplication)
       setApplication(foundApplication)
 
       if (foundApplication.jobId) {
-        console.log("Fetching job data for jobId:", foundApplication.jobId)
+        console.log(
+          "Mengambil data lowongan untuk jobId:",
+          foundApplication.jobId
+        )
         const job = await dataService.getJob(foundApplication.jobId)
 
         if (!job) {
@@ -81,18 +91,19 @@ export default function AIAnalysisPage({ params }: AIAnalysisPageProps) {
           return
         }
 
-        console.log("Job data fetched successfully:", job.title)
+        console.log("Data lowongan berhasil diambil:", job.title)
         setJobData(job)
 
         setAnalyzing(true)
 
+        console.log("Memulai analisis AI...")
         const analyzedApps = await analyzeApplicationsWithAI(
           [foundApplication],
           job
         )
 
-        console.log("MASUK KE FETCH APPLICATION DETAILS 3")
-        console.log("analyzedApps:", analyzedApps)
+        console.log("Analisis AI selesai")
+        console.log("Hasil analisis:", analyzedApps)
 
         if (analyzedApps && analyzedApps.length > 0) {
           setAnalysisResult(analyzedApps[0])
@@ -101,7 +112,7 @@ export default function AIAnalysisPage({ params }: AIAnalysisPageProps) {
         toast.error("Aplikasi tidak memiliki referensi ke lowongan")
       }
     } catch (error) {
-      console.error("Error analyzing application:", error)
+      console.error("Error saat menganalisis aplikasi:", error)
       toast.error("Gagal menganalisis pelamar")
     } finally {
       setLoading(false)
@@ -164,6 +175,13 @@ export default function AIAnalysisPage({ params }: AIAnalysisPageProps) {
   const recommendation =
     analysisResult.recommendation ||
     "Kandidat ini sangat cocok untuk posisi yang membutuhkan keterampilan komunikasi dan layanan pelanggan. Meskipun pengalamannya masih terbatas, sikap dan pendidikannya menunjukkan potensi pengembangan yang baik. Direkomendasikan untuk dilanjutkan ke tahap wawancara."
+
+  const detailScores = analysisResult.detailScores || {
+    skillMatchScore: 85,
+    experienceScore: 70,
+    educationScore: 90,
+    cultureFitScore: 95,
+  }
 
   return (
     <DashboardLayout>
@@ -248,30 +266,47 @@ export default function AIAnalysisPage({ params }: AIAnalysisPageProps) {
                   <span className="text-sm font-medium">
                     Keahlian yang Dibutuhkan
                   </span>
-                  <span className="text-sm font-medium">85%</span>
+                  <span className="text-sm font-medium">
+                    {detailScores.skillMatchScore}%
+                  </span>
                 </div>
-                <Progress value={85} className="h-2" />
+                <Progress
+                  value={detailScores.skillMatchScore}
+                  className="h-2"
+                />
               </div>
               <div>
                 <div className="flex justify-between mb-1">
                   <span className="text-sm font-medium">Pengalaman</span>
-                  <span className="text-sm font-medium">70%</span>
+                  <span className="text-sm font-medium">
+                    {detailScores.experienceScore}%
+                  </span>
                 </div>
-                <Progress value={70} className="h-2" />
+                <Progress
+                  value={detailScores.experienceScore}
+                  className="h-2"
+                />
               </div>
               <div>
                 <div className="flex justify-between mb-1">
                   <span className="text-sm font-medium">Pendidikan</span>
-                  <span className="text-sm font-medium">90%</span>
+                  <span className="text-sm font-medium">
+                    {detailScores.educationScore}%
+                  </span>
                 </div>
-                <Progress value={90} className="h-2" />
+                <Progress value={detailScores.educationScore} className="h-2" />
               </div>
               <div>
                 <div className="flex justify-between mb-1">
                   <span className="text-sm font-medium">Kecocokan Budaya</span>
-                  <span className="text-sm font-medium">95%</span>
+                  <span className="text-sm font-medium">
+                    {detailScores.cultureFitScore}%
+                  </span>
                 </div>
-                <Progress value={95} className="h-2" />
+                <Progress
+                  value={detailScores.cultureFitScore}
+                  className="h-2"
+                />
               </div>
             </div>
           </CardContent>

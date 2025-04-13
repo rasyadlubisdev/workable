@@ -135,7 +135,7 @@ export default function AtsApplicantsPage({
             {targetPercentage}% kriteria.
           </p>
 
-          <div className="flex items-center space-x-2">
+          <div className="flex justify-center space-x-2">
             <Input
               type="number"
               min="1"
@@ -144,12 +144,12 @@ export default function AtsApplicantsPage({
               onChange={handleTargetChange}
               className="max-w-24 text-center"
             />
-            <Button
+            {/* <Button
               className="bg-workable-blue hover:bg-workable-blue-dark"
               onClick={() => {}}
             >
               Kirim
-            </Button>
+            </Button> */}
           </div>
 
           <p className="text-xs text-gray-500 mt-2">

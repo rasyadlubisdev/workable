@@ -17,6 +17,12 @@ const applicantAnalysisSchema = z.object({
   strengths: z.array(z.string()),
   weaknesses: z.array(z.string()),
   recommendation: z.string(),
+  detailScores: z.object({
+    skillMatchScore: z.number().min(0).max(100),
+    experienceScore: z.number().min(0).max(100),
+    educationScore: z.number().min(0).max(100),
+    cultureFitScore: z.number().min(0).max(100),
+  }),
 })
 
 type ApplicantAnalysis = z.infer<typeof applicantAnalysisSchema>
@@ -25,16 +31,21 @@ export async function analyzeApplicationsWithAI(
   applications: JobApplication[],
   job: Job
 ): Promise<
-  (JobApplication & { matchPercentage: number; reasons: string[] })[]
+  (JobApplication & {
+    matchPercentage: number
+    reasons: string[]
+    strengths: string[]
+    weaknesses: string[]
+    recommendation: string
+    detailScores: {
+      skillMatchScore: number
+      experienceScore: number
+      educationScore: number
+      cultureFitScore: number
+    }
+  })[]
 > {
   console.log("test ada API ga?", process.env.NEXT_PUBLIC_OPENAI_API_KEY)
-  console.log("test param 1", process.env.NODE_ENV === "development")
-  console.log("test param 2", !process.env.NEXT_PUBLIC_OPENAI_API_KEY)
-  console.log(
-    "test logic",
-    process.env.NODE_ENV === "development" ||
-      !process.env.NEXT_PUBLIC_OPENAI_API_KEY
-  )
   if (!process.env.NEXT_PUBLIC_OPENAI_API_KEY) {
     console.log("Using mock AI analysis (development mode or missing API key)")
     return mockAnalyzeApplications(applications)
@@ -46,28 +57,34 @@ export async function analyzeApplicationsWithAI(
 
     const promptTemplate = new PromptTemplate({
       template: `
-      You are an AI-powered Applicant Tracking System (ATS) designed to evaluate job candidates with disabilities.
-      Your task is to analyze the candidate's information against the job requirements and provide:
-      1. A match percentage (0-100%)
-      2. Key reasons for the match percentage
-      3. The candidate's strengths
-      4. Areas of improvement or challenges
-      5. A final recommendation
+      Anda adalah sistem Applicant Tracking System (ATS) berbasis AI yang dirancang untuk mengevaluasi kandidat penyandang disabilitas.
 
-      Analyze with a focus on skills, experience, and potential, being mindful of inclusive evaluation.
+      Tugas Anda adalah menganalisis informasi kandidat berdasarkan persyaratan pekerjaan dan memberikan:
+      1. Persentase kecocokan (0-100%)
+      2. Alasan utama untuk persentase kecocokan tersebut
+      3. Kekuatan kandidat
+      4. Area pengembangan atau tantangan
+      5. Rekomendasi akhir
+      6. Skor detail berdasarkan kategori berikut:
+         - Kecocokan Keterampilan (0-100%)
+         - Pengalaman (0-100%)
+         - Pendidikan (0-100%)
+         - Kecocokan Budaya (0-100%)
 
-      JOB DETAILS:
-      Title: {jobTitle}
-      Description: {jobDescription}
-      Requirements: {jobRequirements}
-      Responsibilities: {jobResponsibilities}
-      Skills Required: {jobSkills}
-      Disability Types Allowed: {disabilityTypes}
+      Analisis dengan fokus pada keterampilan, pengalaman, dan potensi, dengan mempertimbangkan prinsip evaluasi inklusif.
 
-      CANDIDATE INFORMATION:
-      Name: {candidateName}
-      Disability Type: {candidateDisability}
-      Skill Field: {candidateSkillField}
+      DETAIL PEKERJAAN:
+      Judul: {jobTitle}
+      Deskripsi: {jobDescription}
+      Persyaratan: {jobRequirements}
+      Tanggung Jawab: {jobResponsibilities}
+      Keterampilan yang Dibutuhkan: {jobSkills}
+      Jenis Disabilitas yang Diperbolehkan: {disabilityTypes}
+
+      INFORMASI KANDIDAT:
+      Nama: {candidateName}
+      Jenis Disabilitas: {candidateDisability}
+      Bidang Keahlian: {candidateSkillField}
 
       {format_instructions}
       `,
@@ -91,7 +108,17 @@ export async function analyzeApplicationsWithAI(
           return {
             ...application,
             matchPercentage: 0,
-            reasons: ["Insufficient candidate data"],
+            reasons: ["Data kandidat tidak mencukupi"],
+            strengths: [],
+            weaknesses: [],
+            recommendation:
+              "Tidak dapat memberikan rekomendasi karena data tidak lengkap",
+            detailScores: {
+              skillMatchScore: 0,
+              experienceScore: 0,
+              educationScore: 0,
+              cultureFitScore: 0,
+            },
           }
         }
 
@@ -108,24 +135,59 @@ export async function analyzeApplicationsWithAI(
         })
 
         try {
+          console.log("Mengirim permintaan ke AI...")
           const response = await model.invoke(promptValue)
+          console.log("Menerima respons dari AI")
           const responseText = response.content.toString()
-          const parsed = await parser.parse(responseText)
 
-          return {
-            ...application,
-            matchPercentage: parsed.matchPercentage,
-            reasons: parsed.reasons,
-            strengths: parsed.strengths,
-            weaknesses: parsed.weaknesses,
-            recommendation: parsed.recommendation,
+          try {
+            const parsed = await parser.parse(responseText)
+            console.log("Hasil parsing berhasil:", parsed.matchPercentage)
+
+            return {
+              ...application,
+              matchPercentage: parsed.matchPercentage,
+              reasons: parsed.reasons,
+              strengths: parsed.strengths,
+              weaknesses: parsed.weaknesses,
+              recommendation: parsed.recommendation,
+              detailScores: parsed.detailScores,
+            }
+          } catch (parseError) {
+            console.error("Error parsing AI response:", parseError)
+            console.log("AI Response:", responseText)
+
+            return {
+              ...application,
+              matchPercentage: 50,
+              reasons: ["Kesalahan dalam menganalisis data"],
+              strengths: ["Tidak dapat menentukan kekuatan"],
+              weaknesses: ["Tidak dapat menentukan kelemahan"],
+              recommendation: "Analisis gagal, mohon coba lagi nanti",
+              detailScores: {
+                skillMatchScore: 50,
+                experienceScore: 50,
+                educationScore: 50,
+                cultureFitScore: 50,
+              },
+            }
           }
         } catch (error) {
           console.error(`Error analyzing application ${application.id}:`, error)
           return {
             ...application,
             matchPercentage: 0,
-            reasons: ["Error in AI analysis"],
+            reasons: ["Kesalahan dalam analisis AI"],
+            strengths: [],
+            weaknesses: [],
+            recommendation:
+              "Tidak dapat memberikan rekomendasi karena terjadi kesalahan",
+            detailScores: {
+              skillMatchScore: 0,
+              experienceScore: 0,
+              educationScore: 0,
+              cultureFitScore: 0,
+            },
           }
         }
       })
@@ -144,10 +206,7 @@ export async function analyzeCVWithAI(
   cvText: string,
   job: Job
 ): Promise<ApplicantAnalysis> {
-  if (
-    process.env.NODE_ENV === "development" ||
-    !process.env.NEXT_PUBLIC_OPENAI_API_KEY
-  ) {
+  if (!process.env.NEXT_PUBLIC_OPENAI_API_KEY) {
     return mockAnalyzeCV()
   }
 
@@ -157,24 +216,30 @@ export async function analyzeCVWithAI(
 
     const promptTemplate = new PromptTemplate({
       template: `
-      You are an AI-powered CV Analyzer for a disability-inclusive Applicant Tracking System (ATS).
-      Your task is to analyze the candidate's CV against the job requirements and provide:
-      1. A match percentage (0-100%)
-      2. Key reasons for the match percentage
-      3. The candidate's strengths
-      4. Areas of improvement or challenges
-      5. A final recommendation
+      Anda adalah sistem Analisis CV berbasis AI untuk Applicant Tracking System (ATS) yang inklusif bagi penyandang disabilitas.
 
-      Analyze with a focus on skills, experience, and potential, being mindful of inclusive evaluation.
+      Tugas Anda adalah menganalisis CV kandidat berdasarkan persyaratan pekerjaan dan memberikan:
+      1. Persentase kecocokan (0-100%)
+      2. Alasan utama untuk persentase kecocokan tersebut
+      3. Kekuatan kandidat
+      4. Area pengembangan atau tantangan
+      5. Rekomendasi akhir
+      6. Skor detail berdasarkan kategori berikut:
+         - Kecocokan Keterampilan (0-100%)
+         - Pengalaman (0-100%)
+         - Pendidikan (0-100%)
+         - Kecocokan Budaya (0-100%)
 
-      JOB DETAILS:
-      Title: {jobTitle}
-      Description: {jobDescription}
-      Requirements: {jobRequirements}
-      Responsibilities: {jobResponsibilities}
-      Skills Required: {jobSkills}
+      Analisis dengan fokus pada keterampilan, pengalaman, dan potensi, dengan mempertimbangkan prinsip evaluasi inklusif.
 
-      CV CONTENT:
+      DETAIL PEKERJAAN:
+      Judul: {jobTitle}
+      Deskripsi: {jobDescription}
+      Persyaratan: {jobRequirements}
+      Tanggung Jawab: {jobResponsibilities}
+      Keterampilan yang Dibutuhkan: {jobSkills}
+
+      ISI CV:
       {cvText}
 
       {format_instructions}
@@ -211,17 +276,53 @@ export async function analyzeCVWithAI(
 
 function mockAnalyzeApplications(
   applications: JobApplication[]
-): (JobApplication & { matchPercentage: number; reasons: string[] })[] {
+): (JobApplication & {
+  matchPercentage: number
+  reasons: string[]
+  strengths: string[]
+  weaknesses: string[]
+  recommendation: string
+  detailScores: {
+    skillMatchScore: number
+    experienceScore: number
+    educationScore: number
+    cultureFitScore: number
+  }
+})[] {
   return applications
     .map((application) => {
       const matchPercentage = Math.floor(Math.random() * 71) + 30
 
       const reasons = [
-        "Kesesuaian dengan keterampilan yang dibutuhkan",
-        "Pengalaman di bidang yang relevan",
-        "Pendidikan yang sesuai",
-        "Kemampuan teknis yang terlihat dari CV",
+        "Kesesuaian dengan keterampilan yang dibutuhkan untuk posisi ini",
+        "Pengalaman di bidang yang relevan dengan tanggung jawab pekerjaan",
+        "Latar belakang pendidikan yang mendukung untuk peran ini",
+        "Kemampuan teknis yang terlihat dari riwayat pekerjaan sebelumnya",
+        "Kecocokan jenis disabilitas dengan lingkungan kerja yang ditawarkan",
+        "Spesialisasi di bidang yang dibutuhkan perusahaan",
       ]
+
+      const strengths = [
+        "Kemampuan komunikasi yang sangat baik",
+        "Pengalaman bekerja dengan tim yang beragam",
+        "Penguasaan bahasa asing yang menjadi nilai tambah",
+        "Sikap yang termotivasi dan adaptif terhadap perubahan",
+        "Keterampilan teknis yang sesuai dengan kebutuhan posisi",
+        "Pemahaman mendalam tentang industri terkait",
+      ]
+
+      const weaknesses = [
+        "Pengalaman kerja yang masih terbatas",
+        "Beberapa keterampilan teknis yang perlu ditingkatkan",
+        "Belum memiliki sertifikasi yang diharapkan",
+        "Belum memiliki pengalaman kepemimpinan yang cukup",
+        "Perlu penguatan dalam hal manajemen proyek",
+      ]
+
+      const skillMatchScore = Math.floor(Math.random() * 41) + 60
+      const experienceScore = Math.floor(Math.random() * 51) + 50
+      const educationScore = Math.floor(Math.random() * 31) + 70
+      const cultureFitScore = Math.floor(Math.random() * 21) + 80
 
       const shuffledReasons = [...reasons].sort(() => 0.5 - Math.random())
       const selectedReasons = shuffledReasons.slice(
@@ -229,10 +330,32 @@ function mockAnalyzeApplications(
         Math.floor(Math.random() * 2) + 2
       )
 
+      const shuffledStrengths = [...strengths].sort(() => 0.5 - Math.random())
+      const selectedStrengths = shuffledStrengths.slice(
+        0,
+        Math.floor(Math.random() * 2) + 2
+      )
+
+      const shuffledWeaknesses = [...weaknesses].sort(() => 0.5 - Math.random())
+      const selectedWeaknesses = shuffledWeaknesses.slice(
+        0,
+        Math.floor(Math.random() * 2) + 1
+      )
+
       return {
         ...application,
         matchPercentage,
         reasons: selectedReasons,
+        strengths: selectedStrengths,
+        weaknesses: selectedWeaknesses,
+        recommendation:
+          "Kandidat ini menunjukkan potensi yang baik untuk posisi ini. Meskipun ada beberapa area yang perlu dikembangkan, sikap dan keterampilannya sesuai dengan kebutuhan perusahaan. Direkomendasikan untuk melanjutkan ke tahap wawancara untuk mengenal kandidat lebih jauh.",
+        detailScores: {
+          skillMatchScore,
+          experienceScore,
+          educationScore,
+          cultureFitScore,
+        },
       }
     })
     .sort((a, b) => b.matchPercentage - a.matchPercentage)
@@ -259,5 +382,11 @@ function mockAnalyzeCV(): ApplicantAnalysis {
     ],
     recommendation:
       "Kandidat ini sangat cocok untuk posisi yang membutuhkan keterampilan komunikasi dan layanan pelanggan. Meskipun pengalamannya masih terbatas, sikap dan pendidikannya menunjukkan potensi pengembangan yang baik. Direkomendasikan untuk dilanjutkan ke tahap wawancara.",
+    detailScores: {
+      skillMatchScore: 85,
+      experienceScore: 70,
+      educationScore: 90,
+      cultureFitScore: 95,
+    },
   }
 }
