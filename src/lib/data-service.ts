@@ -14,6 +14,7 @@ import {
   serverTimestamp,
   CollectionReference,
   DocumentData,
+  runTransaction,
 } from "firebase/firestore"
 import {
   ref,
@@ -225,13 +226,11 @@ export const firebaseDataService: DataService = {
       }
 
       const userDoc = await getDoc(doc(db, "users", auth.currentUser.uid))
-
       if (!userDoc.exists() || userDoc.data()?.role !== UserRole.JOB_SEEKER) {
         throw new Error("Only job seekers can apply to jobs")
       }
 
       const jobDoc = await getDoc(doc(db, "jobs", jobId))
-
       if (!jobDoc.exists()) {
         throw new Error("Job not found")
       }
@@ -240,19 +239,25 @@ export const firebaseDataService: DataService = {
         throw new Error("This job is no longer active")
       }
 
-      const existingApplicationQuery = query(
-        collection(db, "jobApplications"),
-        where("jobId", "==", jobId),
-        where("jobSeekerId", "==", auth.currentUser.uid)
-      )
+      try {
+        const existingApplicationsQuery = query(
+          collection(db, "jobApplications"),
+          where("jobId", "==", jobId),
+          where("jobSeekerId", "==", auth.currentUser.uid),
+          limit(1)
+        )
 
-      const existingApplications = await getDocs(existingApplicationQuery)
-
-      if (!existingApplications.empty) {
-        throw new Error("You have already applied to this job")
+        const existingApplicationsSnapshot = await getDocs(
+          existingApplicationsQuery
+        )
+        if (!existingApplicationsSnapshot.empty) {
+          throw new Error("You have already applied to this job")
+        }
+      } catch (error) {
+        console.error("Error checking existing applications:", error)
       }
 
-      const applicationDoc = await addDoc(collection(db, "jobApplications"), {
+      const applicationData = {
         jobId,
         jobSeekerId: auth.currentUser.uid,
         companyId: jobDoc.data()?.companyId,
@@ -260,16 +265,26 @@ export const firebaseDataService: DataService = {
         appliedAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
         ...userData,
-      })
+      }
 
-      const currentApplicationCount = jobDoc.data()?.applicationsCount || 0
-      await updateDoc(doc(db, "jobs", jobId), {
-        applicationsCount: currentApplicationCount + 1,
-        updatedAt: serverTimestamp(),
-      })
+      const applicationRef = await addDoc(
+        collection(db, "jobApplications"),
+        applicationData
+      )
 
-      return applicationDoc.id
+      try {
+        // const currentApplicationCount = jobDoc.data()?.applicationsCount || 0
+        await updateDoc(doc(db, "jobs", jobId), {
+          // applicationsCount: currentApplicationCount + 1,
+          updatedAt: serverTimestamp(),
+        })
+      } catch (counterError) {
+        console.error("Error updating application count:", counterError)
+      }
+
+      return applicationRef.id
     } catch (error: any) {
+      console.error("Failed to apply to job:", error)
       throw new Error(error.message || "Failed to apply to job")
     }
   },
@@ -347,19 +362,20 @@ export const firebaseDataService: DataService = {
 
       const applicationsQuery = query(
         collection(db, "jobApplications"),
-        where("jobId", "==", jobId),
-        orderBy("appliedAt", "desc")
+        where("jobId", "==", jobId)
       )
 
       const applicationDocs = await getDocs(applicationsQuery)
 
-      const applications = await Promise.all(
-        applicationDocs.docs.map(async (document) => {
-          const application = {
-            id: document.id,
-            ...document.data(),
-          } as JobApplication
+      const applications = applicationDocs.docs.map((document) => {
+        return {
+          id: document.id,
+          ...document.data(),
+        } as JobApplication
+      })
 
+      for (let application of applications) {
+        try {
           const jobSeekerDoc = await getDoc(
             doc(db, "jobSeekers", application.jobSeekerId)
           )
@@ -370,13 +386,14 @@ export const firebaseDataService: DataService = {
               ...jobSeekerDoc.data(),
             } as JobSeeker
           }
-
-          return application
-        })
-      )
+        } catch (error) {
+          console.error("Error fetching job seeker data:", error)
+        }
+      }
 
       return applications
     } catch (error: any) {
+      console.error("Failed to get job applications:", error)
       throw new Error(error.message || "Failed to get job applications")
     }
   },
@@ -387,9 +404,10 @@ export const firebaseDataService: DataService = {
         throw new Error("User not authenticated")
       }
 
-      if (auth.currentUser.uid !== userId) {
-        const userDoc = await getDoc(doc(db, "users", auth.currentUser.uid))
+      const isOwnData = auth.currentUser.uid === userId
 
+      if (!isOwnData) {
+        const userDoc = await getDoc(doc(db, "users", auth.currentUser.uid))
         if (!userDoc.exists() || userDoc.data()?.role !== UserRole.COMPANY) {
           throw new Error(
             "You do not have permission to view these applications"
@@ -399,43 +417,62 @@ export const firebaseDataService: DataService = {
 
       const applicationsQuery = query(
         collection(db, "jobApplications"),
-        where("jobSeekerId", "==", userId),
-        orderBy("appliedAt", "desc")
+        where("jobSeekerId", "==", userId)
       )
 
-      const applicationDocs = await getDocs(applicationsQuery)
+      const limitedQuery = query(applicationsQuery, limit(50))
 
-      const applications = await Promise.all(
-        applicationDocs.docs.map(async (document) => {
+      const applicationDocs = await getDocs(limitedQuery)
+
+      if (applicationDocs.empty) {
+        return []
+      }
+
+      const applications = []
+
+      for (const document of applicationDocs.docs) {
+        try {
           const application = {
             id: document.id,
             ...document.data(),
           } as JobApplication
 
-          const jobDoc = await getDoc(doc(db, "jobs", application.jobId))
+          try {
+            const jobDoc = await getDoc(doc(db, "jobs", application.jobId))
+            if (jobDoc.exists()) {
+              application.job = { id: jobDoc.id, ...jobDoc.data() } as Job
 
-          if (jobDoc.exists()) {
-            application.job = { id: jobDoc.id, ...jobDoc.data() } as Job
-
-            const companyDoc = await getDoc(
-              doc(db, "companies", application.companyId)
-            )
-
-            if (companyDoc.exists()) {
-              application.company = {
-                id: companyDoc.id,
-                ...companyDoc.data(),
-              } as Company
+              if (isOwnData) {
+                try {
+                  const companyDoc = await getDoc(
+                    doc(db, "companies", application.companyId)
+                  )
+                  if (companyDoc.exists()) {
+                    application.company = {
+                      id: companyDoc.id,
+                      ...companyDoc.data(),
+                    } as Company
+                  }
+                } catch (companyError) {
+                  console.error("Error fetching company:", companyError)
+                }
+              }
             }
+          } catch (jobError) {
+            console.error("Error fetching job:", jobError)
           }
 
-          return application
-        })
-      )
+          applications.push(application)
+        } catch (applicationError) {
+          console.error("Error processing application:", applicationError)
+        }
+      }
 
       return applications
     } catch (error: any) {
-      throw new Error(error.message || "Failed to get user applications")
+      console.error("Failed to get user applications:", error)
+
+      return []
     }
   },
 

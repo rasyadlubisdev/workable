@@ -79,7 +79,7 @@ export default function CompanyHomePage() {
     <DashboardLayout>
       <div className="p-4 bg-workable-blue rounded-b-md">
         <div className="relative mb-4">
-          <Search className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+          <Search className="absolute left-0 top-1/2 translate-x-2/4 translate-y-[-50%] h-5 w-5 text-gray-400" />
           <Input
             placeholder="Cari lowongan Anda ..."
             className="pl-10 bg-white text-gray-800 border-transparent"

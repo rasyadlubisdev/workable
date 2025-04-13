@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import React, { useState, useEffect, use } from "react"
 import { useRouter } from "next/navigation"
 import { Search, ChevronDown, ArrowLeft } from "lucide-react"
 import { dataService } from "@/lib/data-service"
@@ -19,16 +19,18 @@ import ApplicantCard from "@/components/applicants/applicant-card"
 import DashboardLayout from "@/components/layout/dashboard-layout"
 import { toast } from "react-toastify"
 
-interface ApplicantsListPageProps {
-  params: {
-    id: string
-  }
-}
+// interface ApplicantsListPageProps {
+//   params: {
+//     id: string
+//   }
+// }
 
 export default function ApplicantsListPage({
   params,
-}: ApplicantsListPageProps) {
-  const { id: jobId } = params
+}: {
+  params: Promise<{ jobId: string }>
+}) {
+  const { jobId } = use(params)
   const router = useRouter()
   const { user } = useAuth()
 
@@ -64,11 +66,20 @@ export default function ApplicantsListPage({
 
       setJob(jobData)
 
-      const applicationsData = await dataService.getJobApplications(jobId)
-      setApplications(applicationsData)
+      try {
+        const applicationsData = await dataService.getJobApplications(jobId)
+        setApplications(applicationsData)
+      } catch (error) {
+        console.error("Error fetching job applications:", error)
+        // Menangani error permission dengan lebih baik
+        toast.warning(
+          "Tidak dapat memuat data pelamar - Menggunakan data kosong"
+        )
+        setApplications([])
+      }
     } catch (error) {
-      console.error("Error fetching job applications:", error)
-      toast.error("Gagal memuat data pelamar")
+      console.error("Error fetching job:", error)
+      toast.error("Gagal memuat data lowongan")
     } finally {
       setLoading(false)
     }

@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, use } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
 import { Job } from "@/types/company"
@@ -12,23 +12,31 @@ import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
 import { toast } from "react-toastify"
 import DashboardLayout from "@/components/layout/dashboard-layout"
+import { ArrowLeft, MapPin, Clock, Building, Briefcase } from "lucide-react"
 import {
-  ArrowLeft,
-  MapPin,
-  Clock,
-  Building,
-  Briefcase,
-  ChevronRight,
-} from "lucide-react"
+  getFirestore,
+  collection,
+  addDoc,
+  query,
+  where,
+  getDocs,
+  limit,
+  serverTimestamp,
+} from "firebase/firestore"
+import { auth } from "@/lib/firebase"
 
-interface JobDetailPageProps {
-  params: {
-    id: string
-  }
-}
+// interface JobDetailPageProps {
+//   params: {
+//     id: string
+//   }
+// }
 
-export default function JobDetailPage({ params }: JobDetailPageProps) {
-  const { id } = params
+export default function JobDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>
+}) {
+  const { id } = use(params)
   const router = useRouter()
   const { user } = useAuth()
 
@@ -37,11 +45,19 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
   const [loading, setLoading] = useState(true)
   const [applyLoading, setApplyLoading] = useState(false)
   const [hasApplied, setHasApplied] = useState(false)
+  const [checkingStatus, setCheckingStatus] = useState(true)
 
   useEffect(() => {
-    fetchJobDetails()
-    checkIfApplied()
+    if (id) {
+      fetchJobDetails()
+    }
   }, [id])
+
+  useEffect(() => {
+    if (user?.id && job) {
+      checkApplicationStatus()
+    }
+  }, [user, job])
 
   const fetchJobDetails = async () => {
     try {
@@ -64,15 +80,27 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
     }
   }
 
-  const checkIfApplied = async () => {
-    if (!user) return
+  const checkApplicationStatus = async () => {
+    if (!user || !job) return
 
+    setCheckingStatus(true)
     try {
-      const applications = await dataService.getUserApplications(user.id)
-      const hasAlreadyApplied = applications.some((app) => app.jobId === id)
-      setHasApplied(hasAlreadyApplied)
+      const db = getFirestore()
+      const applicationsRef = collection(db, "jobApplications")
+      const q = query(
+        applicationsRef,
+        where("jobId", "==", id),
+        where("jobSeekerId", "==", user.id),
+        limit(1)
+      )
+
+      const querySnapshot = await getDocs(q)
+      setHasApplied(!querySnapshot.empty)
     } catch (error) {
       console.error("Error checking application status:", error)
+      setHasApplied(false)
+    } finally {
+      setCheckingStatus(false)
     }
   }
 
@@ -83,11 +111,6 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
       return
     }
 
-    if (user.role !== "JOB_SEEKER") {
-      toast.error("Hanya pencari kerja yang dapat melamar pekerjaan")
-      return
-    }
-
     if (hasApplied) {
       toast.info("Anda sudah melamar pekerjaan ini")
       return
@@ -95,15 +118,33 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
 
     try {
       setApplyLoading(true)
-      const applicationData = {
-        coverLetter: "",
-      }
 
-      await dataService.applyToJob(id, applicationData)
+      const db = getFirestore()
+
+      await addDoc(collection(db, "jobApplications"), {
+        jobId: id,
+        jobSeekerId: user.id,
+        companyId: job?.companyId,
+        status: "Applied",
+        appliedAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        coverLetter: "",
+      })
+
       setHasApplied(true)
       toast.success("Lamaran berhasil dikirim!")
     } catch (error: any) {
-      toast.error(error.message || "Gagal mengirim lamaran")
+      console.error("Error applying to job:", error)
+
+      if (
+        error.message?.includes("already exists") ||
+        error.message?.includes("already applied")
+      ) {
+        setHasApplied(true)
+        toast.info("Anda sudah melamar pekerjaan ini")
+      } else {
+        toast.error(error.message || "Gagal mengirim lamaran")
+      }
     } finally {
       setApplyLoading(false)
     }
@@ -242,15 +283,19 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
 
           <Button
             onClick={handleApply}
-            disabled={applyLoading || hasApplied}
+            disabled={applyLoading || hasApplied || checkingStatus}
             className={`w-full ${
               hasApplied
                 ? "bg-green-500 hover:bg-green-500"
+                : checkingStatus
+                ? "bg-gray-400"
                 : "bg-workable-blue hover:bg-workable-blue-dark"
             }`}
           >
             {applyLoading
               ? "Mengirim Lamaran..."
+              : checkingStatus
+              ? "Memeriksa Status..."
               : hasApplied
               ? "Sudah Dilamar"
               : "Lamar Pekerjaan"}
@@ -312,15 +357,19 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
 
         <Button
           onClick={handleApply}
-          disabled={applyLoading || hasApplied}
+          disabled={applyLoading || hasApplied || checkingStatus}
           className={`w-full ${
             hasApplied
               ? "bg-green-500 hover:bg-green-500"
+              : checkingStatus
+              ? "bg-gray-400"
               : "bg-workable-blue hover:bg-workable-blue-dark"
           } mt-4`}
         >
           {applyLoading
             ? "Mengirim Lamaran..."
+            : checkingStatus
+            ? "Memeriksa Status..."
             : hasApplied
             ? "Sudah Dilamar"
             : "Lamar Pekerjaan"}
