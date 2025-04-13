@@ -4,7 +4,9 @@ import { Job } from "@/types/company"
 import { Button } from "@/components/ui/button"
 import { Company } from "@/types/user"
 import { dataService } from "@/lib/data-service"
-import { formatRupiah } from "@/lib/utils"
+import { cn, formatRupiah } from "@/lib/utils"
+import { useAuth } from "@/contexts/auth-context"
+import { UserRole } from "@/types/auth"
 
 interface JobCardProps {
   job: Job
@@ -21,6 +23,7 @@ const JobCard: React.FC<JobCardProps> = ({
 }) => {
   const [company, setCompany] = useState<Company | null>(null)
   const [loading, setLoading] = useState(true)
+  const { user } = useAuth()
 
   useEffect(() => {
     const fetchCompany = async () => {
@@ -36,6 +39,9 @@ const JobCard: React.FC<JobCardProps> = ({
 
     fetchCompany()
   }, [job.companyId])
+
+  const isOwnCompany =
+    user?.role === UserRole.COMPANY && user?.id === job.companyId
 
   const jobLevel =
     job.requirements?.find(
@@ -118,10 +124,14 @@ const JobCard: React.FC<JobCardProps> = ({
         </div>
       ) : (
         <>
-          <div className="flex justify-between mb-2">
-            <div className="text-xs text-gray-500">
-              {company?.companyName || "Perusahaan"}
-            </div>
+          <div className={cn("flex mb-2", !isOwnCompany && "justify-between")}>
+            {!isOwnCompany && (
+              <div className="text-xs text-gray-500">
+                {company?.companyName || "Perusahaan"}
+              </div>
+            )}
+
+            {isOwnCompany && <div className="text-xs text-gray-500"></div>}
             {showStatusBadge && getStatusBadge()}
           </div>
 

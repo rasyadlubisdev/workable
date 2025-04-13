@@ -1,10 +1,10 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, use } from "react"
 import { useRouter } from "next/navigation"
 import { ArrowLeft } from "lucide-react"
 import { dataService } from "@/lib/data-service"
-import { JobApplication } from "@/types/company"
+import { JobApplication, Job } from "@/types/company"
 import { useAuth } from "@/contexts/auth-context"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -15,38 +15,49 @@ import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
 
 interface AIAnalysisPageProps {
-  params: {
+  params: Promise<{
     id: string
-  }
+  }>
 }
 
 export default function AIAnalysisPage({ params }: AIAnalysisPageProps) {
-  const { id: applicationId } = params
+  const { id: applicationId } = use(params)
   const router = useRouter()
   const { user } = useAuth()
 
   const [application, setApplication] = useState<JobApplication | null>(null)
+  const [jobData, setJobData] = useState<Job | null>(null)
   const [loading, setLoading] = useState(true)
   const [analyzing, setAnalyzing] = useState(false)
   const [analysisResult, setAnalysisResult] = useState<any | null>(null)
 
   useEffect(() => {
-    if (user?.id) {
+    if (user?.id && applicationId) {
+      console.log("Fetching application details with ID:", applicationId)
       fetchApplicationDetails()
     }
   }, [user, applicationId])
 
   const fetchApplicationDetails = async () => {
     try {
+      console.log("MASUK KE FETCH APPLICATION DETAILS 1")
       setLoading(true)
 
       const allJobs = await dataService.getCompanyJobs(user?.id || "")
+      console.log("All jobs fetched:", allJobs.length)
+
       let allApplications: JobApplication[] = []
 
       for (const job of allJobs) {
-        const jobApplications = await dataService.getJobApplications(job.id)
-        allApplications = [...allApplications, ...jobApplications]
+        try {
+          const jobApplications = await dataService.getJobApplications(job.id)
+          allApplications = [...allApplications, ...jobApplications]
+        } catch (error) {
+          console.error(`Error fetching applications for job ${job.id}:`, error)
+        }
       }
+
+      console.log("All applications fetched:", allApplications.length)
 
       const foundApplication = allApplications.find(
         (app) => app.id === applicationId
@@ -58,19 +69,36 @@ export default function AIAnalysisPage({ params }: AIAnalysisPageProps) {
         return
       }
 
+      console.log("Found application:", foundApplication)
       setApplication(foundApplication)
 
-      setAnalyzing(true)
+      if (foundApplication.jobId) {
+        console.log("Fetching job data for jobId:", foundApplication.jobId)
+        const job = await dataService.getJob(foundApplication.jobId)
 
-      if (foundApplication.job) {
+        if (!job) {
+          toast.error("Data lowongan tidak ditemukan")
+          return
+        }
+
+        console.log("Job data fetched successfully:", job.title)
+        setJobData(job)
+
+        setAnalyzing(true)
+
         const analyzedApps = await analyzeApplicationsWithAI(
           [foundApplication],
-          foundApplication.job
+          job
         )
+
+        console.log("MASUK KE FETCH APPLICATION DETAILS 3")
+        console.log("analyzedApps:", analyzedApps)
 
         if (analyzedApps && analyzedApps.length > 0) {
           setAnalysisResult(analyzedApps[0])
         }
+      } else {
+        toast.error("Aplikasi tidak memiliki referensi ke lowongan")
       }
     } catch (error) {
       console.error("Error analyzing application:", error)

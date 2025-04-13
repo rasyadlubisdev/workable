@@ -76,7 +76,7 @@ export const firebaseDataService: DataService = {
         applicationsCount: 0,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
-        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
       })
 
       return jobDoc.id
@@ -112,6 +112,11 @@ export const firebaseDataService: DataService = {
 
   getJob: async (jobId: string) => {
     try {
+      if (!jobId) {
+        console.error("Job ID is undefined or null")
+        return null
+      }
+
       const jobDoc = await getDoc(doc(db, "jobs", jobId))
 
       if (!jobDoc.exists()) {
@@ -120,7 +125,8 @@ export const firebaseDataService: DataService = {
 
       return { id: jobDoc.id, ...jobDoc.data() } as Job
     } catch (error: any) {
-      throw new Error(error.message || "Failed to get job")
+      console.error("Error in getJob:", error)
+      return null
     }
   },
 
@@ -362,7 +368,8 @@ export const firebaseDataService: DataService = {
 
       const applicationsQuery = query(
         collection(db, "jobApplications"),
-        where("jobId", "==", jobId)
+        where("jobId", "==", jobId),
+        where("companyId", "==", auth.currentUser.uid)
       )
 
       const applicationDocs = await getDocs(applicationsQuery)

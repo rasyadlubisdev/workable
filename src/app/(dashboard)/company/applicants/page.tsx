@@ -5,10 +5,10 @@ import { useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
 import { dataService } from "@/lib/data-service"
 import { Job } from "@/types/company"
-import { Search, Info } from "lucide-react"
+import { Search, Info, MapPin } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 import {
   Tooltip,
   TooltipContent,
@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/tooltip"
 import DashboardLayout from "@/components/layout/dashboard-layout"
 import { toast } from "react-toastify"
+import { formatRupiah } from "@/lib/utils"
 
 export default function CompanyApplicantsAtsPage() {
   const router = useRouter()
@@ -69,6 +70,38 @@ export default function CompanyApplicantsAtsPage() {
     return Math.floor(Math.random() * (max - min + 1) + min)
   }
 
+  const getJobLevel = (job: Job) => {
+    return (
+      job.requirements?.find(
+        (req) =>
+          req.toLowerCase().includes("level") ||
+          req.toLowerCase().includes("entry") ||
+          req.toLowerCase().includes("junior") ||
+          req.toLowerCase().includes("senior") ||
+          req.toLowerCase().includes("intermediate")
+      ) || "Entry Level"
+    )
+  }
+
+  const getTypeStyle = (type: string) => {
+    switch (type) {
+      case "Full-time":
+        return "bg-blue-600 text-white"
+      case "Part-time":
+        return "bg-purple-600 text-white"
+      case "Contract":
+        return "bg-orange-600 text-white"
+      case "Freelance":
+        return "bg-green-600 text-white"
+      case "Internship":
+        return "bg-indigo-600 text-white"
+      case "Remote":
+        return "bg-teal-600 text-white"
+      default:
+        return "bg-gray-600 text-white"
+    }
+  }
+
   return (
     <DashboardLayout>
       <div className="p-4 bg-workable-blue rounded-b-md">
@@ -101,9 +134,11 @@ export default function CompanyApplicantsAtsPage() {
           <div className="animate-pulse space-y-4">
             {[...Array(3)].map((_, i) => (
               <div key={i} className="bg-white rounded-lg p-4 shadow-sm">
-                <div className="h-6 bg-slate-200 rounded w-3/4 mb-2"></div>
-                <div className="h-4 bg-slate-200 rounded w-1/2 mb-4"></div>
-                <div className="h-10 bg-slate-200 rounded"></div>
+                <div className="h-4 bg-slate-200 rounded w-3/4 mb-2"></div>
+                <div className="h-3 bg-slate-200 rounded w-1/2 mb-4"></div>
+                <div className="h-3 bg-slate-200 rounded w-1/3 mb-2"></div>
+                <div className="h-3 bg-slate-200 rounded w-1/4 mb-4"></div>
+                <div className="h-8 bg-slate-200 rounded w-24"></div>
               </div>
             ))}
           </div>
@@ -124,12 +159,22 @@ export default function CompanyApplicantsAtsPage() {
           <div className="space-y-4">
             {filteredJobs.map((job) => {
               const matchPercentage = getRandomPercentage(10, 30)
+              const jobLevel = getJobLevel(job)
+              const formattedSalary = job.salary
+                ? `${formatRupiah(job.salary.min)}${
+                    job.salary.max ? ` - ${formatRupiah(job.salary.max)}` : ""
+                  }/bulan`
+                : "Gaji tidak ditampilkan"
+              const isRemote =
+                job.location === "Remote" || job.type === "Remote"
 
               return (
-                <Card key={job.id} className="p-4 border border-gray-200">
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-lg font-semibold">{job.title}</h3>
-
+                <div
+                  key={job.id}
+                  className="bg-white rounded-lg shadow p-5 border border-gray-100"
+                >
+                  <div className="flex justify-between mb-2">
+                    <div className="text-xs text-gray-500">PT Jaya Raya</div>
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -147,18 +192,35 @@ export default function CompanyApplicantsAtsPage() {
                     </TooltipProvider>
                   </div>
 
-                  <div className="text-sm text-gray-600 mb-3">
-                    {job.applicationsCount} Pelamar
+                  <h3 className="text-xl font-semibold mb-1">{job.title}</h3>
+
+                  <div className="text-sm text-gray-600 mb-1">
+                    Level: {jobLevel}
                   </div>
 
-                  <div className="flex items-center gap-4 mb-3">
-                    <div className="flex-1 h-6 bg-gray-200 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-workable-blue"
-                        style={{ width: `${matchPercentage}%` }}
-                      ></div>
-                    </div>
-                    <div className="text-lg font-bold">{matchPercentage}%</div>
+                  <div className="text-sm font-semibold mb-3">
+                    {formattedSalary}
+                  </div>
+
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {!isRemote && job.location && (
+                      <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-workable-orange text-white">
+                        <MapPin className="h-3 w-3 mr-1" />
+                        {job.location}
+                      </span>
+                    )}
+
+                    <span
+                      className={`inline-flex px-3 py-1 rounded-full text-xs font-medium ${getTypeStyle(
+                        job.type
+                      )}`}
+                    >
+                      {job.type}
+                    </span>
+
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                      {job.applicationsCount} Pelamar
+                    </span>
                   </div>
 
                   <div className="flex justify-between items-center">
@@ -172,12 +234,12 @@ export default function CompanyApplicantsAtsPage() {
 
                     <Button
                       onClick={() => handleViewApplicants(job.id)}
-                      className="bg-workable-blue hover:bg-workable-blue-dark"
+                      className="bg-workable-blue hover:bg-workable-blue-dark rounded-full"
                     >
                       Lihat Pelamar Teratas
                     </Button>
                   </div>
-                </Card>
+                </div>
               )
             })}
           </div>

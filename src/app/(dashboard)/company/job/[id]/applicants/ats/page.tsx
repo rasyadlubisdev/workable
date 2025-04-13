@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, use } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 import { ArrowLeft } from "lucide-react"
@@ -25,8 +25,12 @@ interface RankedApplicant extends JobApplication {
   reasons: string[]
 }
 
-export default function AtsApplicantsPage({ params }: AtsApplicantsPageProps) {
-  const { id: jobId } = params
+export default function AtsApplicantsPage({
+  params,
+}: {
+  params: Promise<{ id: string }>
+}) {
+  const { id: jobId } = use(params)
   const router = useRouter()
   const { user } = useAuth()
 

@@ -127,10 +127,11 @@ export default function CompanyHomePage() {
                   showStatusBadge
                 />
                 {job.applicationsCount > 0 && (
-                  <div className="absolute top-4 right-4">
+                  <div className="absolute bottom-5 right-5">
                     <Button
+                      variant="outline"
                       onClick={() => handleViewApplicants(job.id)}
-                      className="bg-workable-blue hover:bg-workable-blue-dark text-white rounded-md"
+                      className="text-workable-blue border-workable-blue rounded-md"
                     >
                       Lihat Pelamar
                     </Button>

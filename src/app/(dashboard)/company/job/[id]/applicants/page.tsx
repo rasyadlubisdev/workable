@@ -28,9 +28,9 @@ import { toast } from "react-toastify"
 export default function ApplicantsListPage({
   params,
 }: {
-  params: Promise<{ jobId: string }>
+  params: Promise<{ id: string }>
 }) {
-  const { jobId } = use(params)
+  const { id } = use(params)
   const router = useRouter()
   const { user } = useAuth()
 
@@ -44,14 +44,14 @@ export default function ApplicantsListPage({
     if (user?.id) {
       fetchJobAndApplications()
     }
-  }, [user, jobId])
+  }, [user, id])
 
   const fetchJobAndApplications = async () => {
     if (!user?.id) return
 
     try {
       setLoading(true)
-      const jobData = await dataService.getJob(jobId)
+      const jobData = await dataService.getJob(id)
       if (!jobData) {
         toast.error("Lowongan tidak ditemukan")
         router.push("/company")
@@ -67,11 +67,10 @@ export default function ApplicantsListPage({
       setJob(jobData)
 
       try {
-        const applicationsData = await dataService.getJobApplications(jobId)
+        const applicationsData = await dataService.getJobApplications(id)
         setApplications(applicationsData)
       } catch (error) {
         console.error("Error fetching job applications:", error)
-        // Menangani error permission dengan lebih baik
         toast.warning(
           "Tidak dapat memuat data pelamar - Menggunakan data kosong"
         )

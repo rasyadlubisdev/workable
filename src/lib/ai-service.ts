@@ -1,11 +1,11 @@
-import { OpenAI } from "@langchain/openai"
+import { ChatOpenAI } from "@langchain/openai"
 import { PromptTemplate } from "@langchain/core/prompts"
 import { StructuredOutputParser } from "langchain/output_parsers"
 import { z } from "zod"
 import { JobApplication } from "@/types/company"
 import { Job } from "@/types/company"
 
-const model = new OpenAI({
+const model = new ChatOpenAI({
   modelName: "gpt-4o",
   temperature: 0,
   openAIApiKey: process.env.NEXT_PUBLIC_OPENAI_API_KEY,
@@ -27,10 +27,15 @@ export async function analyzeApplicationsWithAI(
 ): Promise<
   (JobApplication & { matchPercentage: number; reasons: string[] })[]
 > {
-  if (
+  console.log("test ada API ga?", process.env.NEXT_PUBLIC_OPENAI_API_KEY)
+  console.log("test param 1", process.env.NODE_ENV === "development")
+  console.log("test param 2", !process.env.NEXT_PUBLIC_OPENAI_API_KEY)
+  console.log(
+    "test logic",
     process.env.NODE_ENV === "development" ||
-    !process.env.NEXT_PUBLIC_OPENAI_API_KEY
-  ) {
+      !process.env.NEXT_PUBLIC_OPENAI_API_KEY
+  )
+  if (!process.env.NEXT_PUBLIC_OPENAI_API_KEY) {
     console.log("Using mock AI analysis (development mode or missing API key)")
     return mockAnalyzeApplications(applications)
   }
@@ -90,7 +95,7 @@ export async function analyzeApplicationsWithAI(
           }
         }
 
-        const prompt = await promptTemplate.format({
+        const promptValue = await promptTemplate.format({
           jobTitle: job.title,
           jobDescription: job.description,
           jobRequirements: job.requirements.join(", "),
@@ -103,8 +108,9 @@ export async function analyzeApplicationsWithAI(
         })
 
         try {
-          const response = await model.call(prompt)
-          const parsed = await parser.parse(response)
+          const response = await model.invoke(promptValue)
+          const responseText = response.content.toString()
+          const parsed = await parser.parse(responseText)
 
           return {
             ...application,
@@ -184,7 +190,7 @@ export async function analyzeCVWithAI(
       partialVariables: { format_instructions: formatInstructions },
     })
 
-    const prompt = await promptTemplate.format({
+    const promptValue = await promptTemplate.format({
       jobTitle: job.title,
       jobDescription: job.description,
       jobRequirements: job.requirements.join(", "),
@@ -193,8 +199,10 @@ export async function analyzeCVWithAI(
       cvText: cvText,
     })
 
-    const response = await model.call(prompt)
-    return await parser.parse(response)
+    const response = await model.invoke(promptValue)
+    const responseText = response.content.toString()
+
+    return await parser.parse(responseText)
   } catch (error) {
     console.error("Error in CV analysis:", error)
     return mockAnalyzeCV()
@@ -206,7 +214,7 @@ function mockAnalyzeApplications(
 ): (JobApplication & { matchPercentage: number; reasons: string[] })[] {
   return applications
     .map((application) => {
-      const matchPercentage = Math.floor(Math.random() * 71) + 30 // Random between 30-100
+      const matchPercentage = Math.floor(Math.random() * 71) + 30
 
       const reasons = [
         "Kesesuaian dengan keterampilan yang dibutuhkan",
