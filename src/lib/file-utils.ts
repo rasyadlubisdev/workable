@@ -9,16 +9,11 @@
  */
 export async function extractTextFromFile(file: File): Promise<string> {
   try {
-    // Handle PDF files
     if (file.type === "application/pdf") {
       return await extractTextFromPDF(file)
-    }
-    // Handle image files
-    else if (file.type.startsWith("image/")) {
+    } else if (file.type.startsWith("image/")) {
       return await extractTextFromImage(file)
-    }
-    // Handle other file types
-    else {
+    } else {
       return `[File: ${file.name}]
 Type: ${file.type}
 Size: ${(file.size / 1024).toFixed(2)} KB
@@ -36,9 +31,6 @@ Last Modified: ${new Date(file.lastModified).toLocaleString()}`
  * @returns Text content from the PDF
  */
 export async function extractTextFromPDF(file: File): Promise<string> {
-  // In a production environment, you would use PDF.js or a similar library
-  // Here we provide a placeholder that would be replaced with actual PDF parsing
-
   return `[PDF Document: ${file.name}]
 File Size: ${(file.size / 1024).toFixed(2)} KB
 Last Modified: ${new Date(file.lastModified).toLocaleString()}
@@ -55,8 +47,6 @@ File information is being passed to the AI for processing.`
  * @returns Description of the image
  */
 export async function extractTextFromImage(file: File): Promise<string> {
-  // In a production environment, you would use OCR or image analysis
-
   return `[Image: ${file.name}]
 Type: ${file.type}
 Size: ${(file.size / 1024).toFixed(2)} KB

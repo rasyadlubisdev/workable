@@ -280,7 +280,6 @@ export const firebaseDataService: DataService = {
       )
 
       try {
-        // Update the applicationsCount in the job document
         const applicationsQuery = query(
           collection(db, "jobApplications"),
           where("jobId", "==", jobId)
@@ -364,16 +363,14 @@ export const firebaseDataService: DataService = {
         throw new Error("User not found")
       }
 
-      // Check job existence first
       const jobDoc = await getDoc(doc(db, "jobs", jobId))
       if (!jobDoc.exists()) {
         throw new Error("Job not found")
       }
 
-      // Check if user is the company that owns this job or has admin role
       const userData = userDoc.data()
       const isOwner = jobDoc.data()?.companyId === auth.currentUser.uid
-      const isAdmin = userData?.role === "ADMIN" // Jika ada role admin di aplikasi
+      const isAdmin = userData?.role === "ADMIN"
 
       if (userData?.role !== UserRole.COMPANY && !isAdmin) {
         throw new Error("Only companies can view job applications")
@@ -383,7 +380,6 @@ export const firebaseDataService: DataService = {
         throw new Error("You can only view applications to your own jobs")
       }
 
-      // Mengubah query untuk mengurangi kompleksitas dan potensi masalah izin
       const applicationsQuery = query(
         collection(db, "jobApplications"),
         where("jobId", "==", jobId)
@@ -398,7 +394,6 @@ export const firebaseDataService: DataService = {
         } as JobApplication
       })
 
-      // Load job seeker data separately with error handling
       const populatedApplications = await Promise.all(
         applications.map(async (application) => {
           try {
@@ -425,7 +420,6 @@ export const firebaseDataService: DataService = {
       return populatedApplications
     } catch (error: any) {
       console.error("Failed to get job applications:", error)
-      // Return empty array instead of throwing to prevent UI breakage
       return []
     }
   },

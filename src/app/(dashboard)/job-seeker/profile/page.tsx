@@ -67,11 +67,9 @@ export default function JobSeekerProfilePage() {
 
   const handleEditToggle = () => {
     if (editing) {
-      // Cancel editing
       setEditing(false)
       setEditData({})
     } else {
-      // Start editing
       setEditing(true)
       setEditData({
         fullName: jobSeeker?.fullName || "",
@@ -137,7 +135,6 @@ export default function JobSeekerProfilePage() {
 
     const file = e.target.files[0]
 
-    // Check file type
     if (
       !file.type.includes("pdf") &&
       !file.type.includes("word") &&
@@ -147,7 +144,6 @@ export default function JobSeekerProfilePage() {
       return
     }
 
-    // Check file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
       toast.error("Ukuran file terlalu besar (maksimal 5MB)")
       return
@@ -156,7 +152,6 @@ export default function JobSeekerProfilePage() {
     try {
       setUploadingCV(true)
 
-      // Simulate progress
       const interval = setInterval(() => {
         setUploadProgress((prev) => {
           if (prev >= 95) {
@@ -172,15 +167,12 @@ export default function JobSeekerProfilePage() {
       clearInterval(interval)
       setUploadProgress(100)
 
-      // Update job seeker profile with CV URL
       await dataService.updateJobSeeker(user.id, { cv: cvUrl })
 
       toast.success("CV berhasil diunggah")
 
-      // Refresh profile data
       fetchJobSeekerProfile()
 
-      // Reset progress after a delay
       setTimeout(() => {
         setUploadProgress(0)
       }, 1000)

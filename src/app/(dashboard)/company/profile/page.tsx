@@ -56,11 +56,9 @@ export default function CompanyProfilePage() {
 
   const handleEditToggle = () => {
     if (editing) {
-      // Cancel editing
       setEditing(false)
       setEditData({})
     } else {
-      // Start editing
       setEditing(true)
       setEditData({
         name: company?.name || "",

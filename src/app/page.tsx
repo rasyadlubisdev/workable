@@ -17,10 +17,8 @@ export default function SplashScreen() {
     const timer = setTimeout(() => {
       setRedirecting(true)
 
-      // Check if user is authenticated and redirect accordingly
       if (!loading) {
         if (user) {
-          // Redirect based on user role
           if (user.role === UserRole.COMPANY) {
             router.push("/company")
           } else if (user.role === UserRole.JOB_SEEKER) {
@@ -32,7 +30,6 @@ export default function SplashScreen() {
           router.push("/auth/login")
         }
       } else {
-        // If still loading, redirect to login (auth state will be checked there)
         router.push("/auth/login")
       }
     }, 2000)

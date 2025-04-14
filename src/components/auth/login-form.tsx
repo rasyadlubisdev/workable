@@ -51,7 +51,6 @@ export default function LoginForm() {
       const result = await login(values.email, values.password)
       toast.success("Login berhasil!")
 
-      // Redirect based on user role
       if (result && result.role === UserRole.COMPANY) {
         router.push("/company")
       } else if (result && result.role === UserRole.JOB_SEEKER) {

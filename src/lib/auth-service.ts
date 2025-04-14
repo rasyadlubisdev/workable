@@ -30,14 +30,11 @@ export const firebaseAuthService: AuthService = {
         password
       )
 
-      // Get the user role from Firestore
       const userDoc = await getDoc(doc(db, "users", userCredential.user.uid))
       if (!userDoc.exists()) {
         throw new Error("User document does not exist")
       }
 
-      // Return the Firebase User object as required by the function signature
-      // The role information is available from the Firestore document
       return userCredential.user
     } catch (error: any) {
       throw new Error(error.message || "Login failed")

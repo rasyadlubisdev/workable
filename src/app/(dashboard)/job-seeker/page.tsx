@@ -58,10 +58,9 @@ export default function JobSeekerHomePage() {
       setLoadingApplied(true)
       const applications = await dataService.getUserApplications(user.id)
 
-      // Extract only the job information from applications
       const jobsFromApplications = applications
-        .filter((app) => app.job) // Filter out applications without job data
-        .map((app) => app.job as Job) // Extract the job data
+        .filter((app) => app.job)
+        .map((app) => app.job as Job)
 
       setAppliedJobs(jobsFromApplications)
     } catch (error) {
@@ -89,7 +88,7 @@ export default function JobSeekerHomePage() {
     }
 
     if (filters.level.length > 0) {
-      // Implementation for level filtering (if needed)
+      // Implementation for level filtering
     }
 
     if (filters.disabilityTypes.length > 0) {
@@ -100,7 +99,7 @@ export default function JobSeekerHomePage() {
     }
 
     if (filters.salaryRange) {
-      // Implementation for salary range filtering (if needed)
+      // Implementation for salary range filtering
     }
 
     return true

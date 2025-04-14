@@ -110,7 +110,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setState({ ...state, loading: true, error: null })
       const result = await authService.login(email, password)
 
-      // Return result for redirection
       return result
     } catch (error: any) {
       setState({
@@ -127,7 +126,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setState({ ...state, loading: true, error: null })
       const result = await authService.registerCompany(userData)
 
-      // Store user role in localStorage for redirection after success page
       localStorage.setItem("registeredUserRole", "COMPANY")
 
       router.push("/auth/success")
@@ -147,7 +145,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setState({ ...state, loading: true, error: null })
       const result = await authService.registerJobSeeker(userData)
 
-      // Store user role in localStorage for redirection after success page
       localStorage.setItem("registeredUserRole", "JOB_SEEKER")
 
       router.push("/auth/success")

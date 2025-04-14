@@ -178,7 +178,6 @@ export default function CompanyRegisterForm() {
         }
 
       const result = await registerCompany(userData)
-      // Store user role in localStorage for redirection after success page
       localStorage.setItem("registeredUserRole", "COMPANY")
       toast.success("Pendaftaran perusahaan berhasil!")
       router.push("/auth/success")

@@ -16,26 +16,21 @@ export default function RouteGuard({ children, allowedRole }: RouteGuardProps) {
   const [authorized, setAuthorized] = useState(false)
 
   useEffect(() => {
-    // Check if user is authenticated and has the correct role
     if (!loading) {
       if (!user) {
-        // Not logged in, redirect to login
         router.push("/auth/login")
       } else if (user.role !== allowedRole) {
-        // Wrong role, redirect to appropriate dashboard
         if (user.role === UserRole.COMPANY) {
           router.push("/company")
         } else if (user.role === UserRole.JOB_SEEKER) {
           router.push("/job-seeker")
         }
       } else {
-        // Authorized, show content
         setAuthorized(true)
       }
     }
   }, [user, loading, allowedRole, router])
 
-  // Show loading or nothing until authorization is determined
   if (loading || !authorized) {
     return (
       <div className="flex justify-center items-center min-h-screen">
@@ -44,6 +39,5 @@ export default function RouteGuard({ children, allowedRole }: RouteGuardProps) {
     )
   }
 
-  // If authorized, show content
   return <>{children}</>
 }

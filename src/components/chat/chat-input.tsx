@@ -34,7 +34,6 @@ const ChatInput: React.FC<ChatInputProps> = ({
     if (files.length > 0) {
       setUploading(true)
       try {
-        // Send message with files
         onSendMessage(message, files)
       } catch (error) {
         console.error("Error processing files:", error)
@@ -43,7 +42,6 @@ const ChatInput: React.FC<ChatInputProps> = ({
         setUploading(false)
       }
     } else {
-      // Send message without files
       onSendMessage(message)
     }
 

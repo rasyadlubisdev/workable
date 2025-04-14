@@ -9,12 +9,8 @@ import { useEffect } from "react"
 export default function RegistrationSuccessPage() {
   const router = useRouter()
 
-  // Check if there are stored credentials for redirection
   useEffect(() => {
-    // Clean up function to remove stored data when component unmounts
-    return () => {
-      // We don't remove it here to give the redirect a chance to use it
-    }
+    return () => {}
   }, [])
 
   return (
@@ -35,7 +31,6 @@ export default function RegistrationSuccessPage() {
         <Button
           className="w-full bg-[#42B4E6] hover:bg-[#3AA0D1] py-6"
           onClick={() => {
-            // Redirect based on stored user role or default to login
             if (
               window.localStorage.getItem("registeredUserRole") === "COMPANY"
             ) {

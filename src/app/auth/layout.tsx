@@ -15,7 +15,6 @@ export default function AuthLayout({
 
   useEffect(() => {
     if (!loading && user) {
-      // If user is already authenticated, redirect to the appropriate dashboard
       if (user.role === UserRole.COMPANY) {
         router.push("/company")
       } else if (user.role === UserRole.JOB_SEEKER) {
@@ -24,6 +23,5 @@ export default function AuthLayout({
     }
   }, [user, loading, router])
 
-  // If we're still loading or the user is not authenticated, show the children
   return <>{children}</>
 }
