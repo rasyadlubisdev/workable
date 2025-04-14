@@ -4,7 +4,11 @@
 
 **Team**: TeeQobez
 
-**Tagline**: Platform digital berbasis Natural Language Processing dan Computer Vision untuk meningkatkan akses kerja bagi penyandang disabilitas.
+- Muhammad Rasyad Lubis
+- Nabila Mutiara Susetio
+- Abdan Hafidz
+
+Platform digital berbasis Natural Language Processing dan Computer Vision untuk meningkatkan akses kerja bagi penyandang disabilitas.
 
 ## 🚀 Deskripsi Singkat
 
