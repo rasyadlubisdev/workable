@@ -41,20 +41,14 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
             pathname?.startsWith("/job-seeker/job/"),
         },
         {
-          icon: <FileText className="h-6 w-6" />,
-          label: "Aplikasi",
-          path: "/job-seeker/applications",
-          active: pathname === "/job-seeker/applications",
-        },
-        {
           icon: <MessageSquare className="h-6 w-6" />,
-          label: "Percakapan",
+          label: "AI Asisten",
           path: "/job-seeker/chat",
           active: pathname === "/job-seeker/chat",
         },
         {
           icon: <User className="h-6 w-6" />,
-          label: "Saya",
+          label: "Profil",
           path: "/job-seeker/profile",
           active: pathname === "/job-seeker/profile",
         },
@@ -73,12 +67,6 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
           label: "Pelamar",
           path: "/company/applicants",
           active: pathname === "/company/applicants",
-        },
-        {
-          icon: <MessageSquare className="h-6 w-6" />,
-          label: "Percakapan",
-          path: "/company/chat",
-          active: pathname === "/company/chat",
         },
         {
           icon: <User className="h-6 w-6" />,

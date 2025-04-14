@@ -88,6 +88,7 @@ export interface Company {
   companyName: string
   createdAt: string
   updatedAt: string
+  logo?: string
 }
 
 export interface CompanyProfile extends Company {

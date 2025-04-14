@@ -2,14 +2,15 @@ import React, { useState, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Send, Paperclip, X, Loader2, FileIcon, ImageIcon } from "lucide-react"
-import { storage } from "@/lib/firebase"
-import { getDownloadURL, ref, uploadBytes } from "firebase/storage"
-import { v4 as uuidv4 } from "uuid"
 import { toast } from "react-toastify"
 import CVUpload from "@/components/chat/cv-upload"
 
 interface ChatInputProps {
-  onSendMessage: (message: string, attachments?: File[]) => void
+  onSendMessage: (
+    message: string,
+    attachments?: File[],
+    fileContents?: string[]
+  ) => void
   loading: boolean
   topic?: string
 }
@@ -33,31 +34,16 @@ const ChatInput: React.FC<ChatInputProps> = ({
     if (files.length > 0) {
       setUploading(true)
       try {
-        const uploadedFiles = await Promise.all(
-          files.map(async (file) => {
-            const fileId = uuidv4()
-            const fileRef = ref(
-              storage,
-              `chat-attachments/${fileId}-${file.name}`
-            )
-            await uploadBytes(fileRef, file)
-            const downloadURL = await getDownloadURL(fileRef)
-            return {
-              name: file.name,
-              url: downloadURL,
-              type: file.type,
-            }
-          })
-        )
-
+        // Send message with files
         onSendMessage(message, files)
       } catch (error) {
-        console.error("Error uploading files:", error)
+        console.error("Error processing files:", error)
         toast.error("Gagal mengunggah file. Silakan coba lagi.")
       } finally {
         setUploading(false)
       }
     } else {
+      // Send message without files
       onSendMessage(message)
     }
 

@@ -65,13 +65,13 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, topic }) => {
       >
         {renderMessageContent(message.content)}
 
-        {!isUserMessage &&
+        {/* {!isUserMessage &&
           topic === "jobs" &&
           message.content.includes("lowongan") && (
             <div className="mt-3">
               <JobSuggestion />
             </div>
-          )}
+          )} */}
 
         {message.attachments && message.attachments.length > 0 && (
           <div className="mt-2">

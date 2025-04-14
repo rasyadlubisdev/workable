@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
 import { dataService } from "@/lib/data-service"
-import { Job } from "@/types/company"
+import { Job, JobApplication } from "@/types/company"
 import { Search, Info, MapPin } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -25,6 +25,9 @@ export default function CompanyApplicantsAtsPage() {
   const [jobs, setJobs] = useState<Job[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
+  const [applicationsMap, setApplicationsMap] = useState<{
+    [jobId: string]: JobApplication[]
+  }>({})
 
   useEffect(() => {
     if (user?.id) {
@@ -38,11 +41,18 @@ export default function CompanyApplicantsAtsPage() {
     try {
       setLoading(true)
       const fetchedJobs = await dataService.getCompanyJobs(user.id)
+      const nonDraftJobs = fetchedJobs.filter((job) => job.status !== "Draft")
 
-      const jobsWithApplicants = fetchedJobs.filter(
-        (job) => job.applicationsCount > 0 && job.status !== "Draft"
+      const map: { [jobId: string]: JobApplication[] } = {}
+      for (const job of nonDraftJobs) {
+        const apps = await dataService.getJobApplications(job.id)
+        map[job.id] = apps
+      }
+
+      const jobsWithApplicants = nonDraftJobs.filter(
+        (job) => map[job.id]?.length > 0
       )
-
+      setApplicationsMap(map)
       setJobs(jobsWithApplicants)
     } catch (error) {
       console.error("Error fetching jobs:", error)
@@ -219,18 +229,18 @@ export default function CompanyApplicantsAtsPage() {
                     </span>
 
                     <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                      {job.applicationsCount} Pelamar
+                      {applicationsMap[job.id]?.length || 0} Pelamar
                     </span>
                   </div>
 
                   <div className="flex justify-between items-center">
-                    <div>
+                    {/* <div>
                       <span className="text-sm text-gray-500">
                         {`${Math.ceil(
                           job.applicationsCount * (matchPercentage / 100)
                         )} pelamar memenuhi kriteria`}
                       </span>
-                    </div>
+                    </div> */}
 
                     <Button
                       onClick={() => handleViewApplicants(job.id)}

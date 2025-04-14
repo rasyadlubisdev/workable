@@ -177,8 +177,11 @@ export default function CompanyRegisterForm() {
           businessField: finalBusinessField,
         }
 
-      await registerCompany(userData)
+      const result = await registerCompany(userData)
+      // Store user role in localStorage for redirection after success page
+      localStorage.setItem("registeredUserRole", "COMPANY")
       toast.success("Pendaftaran perusahaan berhasil!")
+      router.push("/auth/success")
     } catch (error: any) {
       toast.error(error.message || "Pendaftaran gagal")
       console.error("Registration error:", error)

@@ -133,6 +133,9 @@ export default function JobSeekerRegisterForm() {
 
       const { user } = await authService.registerJobSeeker(userData)
 
+      // Store user role in localStorage for redirection after success page
+      localStorage.setItem("registeredUserRole", "JOB_SEEKER")
+
       let cvUrl = ""
 
       await new Promise((resolve) => {

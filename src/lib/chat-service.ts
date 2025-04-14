@@ -62,7 +62,8 @@ const careerAdviceSchema = z.object({
 export const chatService = {
   async getCareerAdvice(
     userMessage: string,
-    userDisabilityType?: string
+    userDisabilityType?: string,
+    fileContents?: string[]
   ): Promise<string> {
     try {
       if (!process.env.NEXT_PUBLIC_OPENAI_API_KEY) {
@@ -73,13 +74,23 @@ export const chatService = {
           },
           {
             role: "user",
-            content: userMessage,
+            content:
+              userMessage +
+              (fileContents && fileContents.length > 0
+                ? "\n\nFile yang dilampirkan:\n" + fileContents.join("\n\n")
+                : ""),
           },
         ])
       }
 
       const parser = StructuredOutputParser.fromZodSchema(careerAdviceSchema)
       const formatInstructions = parser.getFormatInstructions()
+
+      const fileContent =
+        fileContents && fileContents.length > 0
+          ? "\n\nIsi file yang dilampirkan:\n" +
+            fileContents.join("\n\n---\n\n")
+          : ""
 
       const promptTemplate = new PromptTemplate({
         template: `
@@ -89,7 +100,13 @@ export const chatService = {
           userDisabilityType ? `tipe ${userDisabilityType}` : ""
         }. Berikan saran yang spesifik dan praktis tentang jalur karir, keahlian yang perlu dikembangkan, dan cara menghadapi tantangan di tempat kerja. Jawaban seharusnya positif, realistis, dan memberdayakan.
 
-        Query pengguna: {userMessage}
+        Query pengguna: {userMessage}${fileContent}
+
+        ${
+          fileContent
+            ? "Analisis file yang dilampirkan dan gunakan informasinya untuk memberikan saran yang lebih personal dan spesifik."
+            : ""
+        }
 
         {format_instructions}
         `,
@@ -132,7 +149,7 @@ export const chatService = {
           },
           {
             role: "user",
-            content: userMessage,
+            content: userMessage + fileContent,
           },
         ])
       }
@@ -142,8 +159,19 @@ export const chatService = {
     }
   },
 
-  async getCVFeedback(userMessage: string, cvText?: string): Promise<string> {
+  async getCVFeedback(
+    userMessage: string,
+    cvText?: string,
+    fileContents?: string[]
+  ): Promise<string> {
     try {
+      const allContent =
+        userMessage +
+        (cvText ? `\n\nIsi CV:\n${cvText}` : "") +
+        (fileContents && fileContents.length > 0
+          ? "\n\nFile yang dilampirkan:\n" + fileContents.join("\n\n")
+          : "")
+
       if (!process.env.NEXT_PUBLIC_OPENAI_API_KEY) {
         return await openaiService.createChatCompletion([
           {
@@ -152,7 +180,7 @@ export const chatService = {
           },
           {
             role: "user",
-            content: `${userMessage}${cvText ? `\n\nIsi CV: ${cvText}` : ""}`,
+            content: allContent,
           },
         ])
       }
@@ -166,17 +194,18 @@ export const chatService = {
 
         Berikan saran untuk meningkatkan CV yang dianalisis, dengan fokus pada cara menyoroti kekuatan dan kemampuan serta mengatasi potensi stigma terkait disabilitas. Berikan saran yang spesifik dan dapat ditindaklanjuti, termasuk hal-hal seperti format, konten, bagaimana menyajikan keterampilan, dan cara mengkomunikasikan kebutuhan aksesibilitas secara efektif.
 
-        Query pengguna: {userMessage}
-        ${cvText ? `\n\nIsi CV:\n${cvText}` : ""}
+        Query pengguna dan konten CV: {allContent}
+
+        Analisis CV yang diberikan dan berikan umpan balik yang konstruktif dan spesifik.
 
         {format_instructions}
         `,
-        inputVariables: ["userMessage"],
+        inputVariables: ["allContent"],
         partialVariables: { format_instructions: formatInstructions },
       })
 
       const promptValue = await promptTemplate.format({
-        userMessage: userMessage,
+        allContent: allContent,
       })
 
       const response = await model.invoke(promptValue)
@@ -215,7 +244,7 @@ export const chatService = {
           },
           {
             role: "user",
-            content: `${userMessage}${cvText ? `\n\nIsi CV: ${cvText}` : ""}`,
+            content: allContent,
           },
         ])
       }
@@ -228,10 +257,17 @@ export const chatService = {
   async getJobRecommendations(
     userMessage: string,
     userSkills?: string[],
-    userDisabilityType?: string
+    userDisabilityType?: string,
+    fileContents?: string[]
   ): Promise<string> {
     try {
       const activeJobs = await fetchActiveJobs()
+
+      const fullUserInput =
+        userMessage +
+        (fileContents && fileContents.length > 0
+          ? "\n\nFile yang dilampirkan:\n" + fileContents.join("\n\n")
+          : "")
 
       if (!process.env.NEXT_PUBLIC_OPENAI_API_KEY) {
         return await openaiService.createChatCompletion([
@@ -241,7 +277,7 @@ export const chatService = {
           },
           {
             role: "user",
-            content: userMessage,
+            content: fullUserInput,
           },
         ])
       }
@@ -281,16 +317,22 @@ Keahlian: ${job.skillsRequired.join(", ")}
             : ""
         }
 
-        Query pengguna: {userMessage}
+        Input pengguna: {userInput}
+
+        ${
+          fileContents && fileContents.length > 0
+            ? "Analisis file yang dilampirkan untuk mendapatkan informasi tambahan tentang keterampilan dan pengalaman pengguna."
+            : ""
+        }
 
         {format_instructions}
         `,
-        inputVariables: ["userMessage"],
+        inputVariables: ["userInput"],
         partialVariables: { format_instructions: formatInstructions },
       })
 
       const promptValue = await promptTemplate.format({
-        userMessage: userMessage,
+        userInput: fullUserInput,
       })
 
       const response = await model.invoke(promptValue)
@@ -331,7 +373,7 @@ Keahlian: ${job.skillsRequired.join(", ")}
           },
           {
             role: "user",
-            content: userMessage,
+            content: fullUserInput,
           },
         ])
       }
@@ -341,18 +383,33 @@ Keahlian: ${job.skillsRequired.join(", ")}
     }
   },
 
-  async getGeneralHelp(userMessage: string): Promise<string> {
+  async getGeneralHelp(
+    userMessage: string,
+    fileContents?: string[]
+  ): Promise<string> {
     try {
+      const fullUserInput =
+        userMessage +
+        (fileContents && fileContents.length > 0
+          ? "\n\nFile yang dilampirkan:\n" + fileContents.join("\n\n")
+          : "")
+
       return await openaiService.createChatCompletion([
         {
           role: "system",
           content: `${SYSTEM_PROMPT}
 
-Bantu pengguna dengan pertanyaan umum tentang mencari pekerjaan, wawancara, hak di tempat kerja, atau topik lain terkait disabilitas dan pekerjaan. Berikan informasi yang akurat, praktis, dan memotivasi.`,
+Bantu pengguna dengan pertanyaan umum tentang mencari pekerjaan, wawancara, hak di tempat kerja, atau topik lain terkait disabilitas dan pekerjaan. Berikan informasi yang akurat, praktis, dan memotivasi.
+
+${
+  fileContents && fileContents.length > 0
+    ? "Pengguna telah mengunggah file. Analisis informasi dalam file dan gunakan untuk memberikan saran yang lebih spesifik dan personal."
+    : ""
+}`,
         },
         {
           role: "user",
-          content: userMessage,
+          content: fullUserInput,
         },
       ])
     } catch (error) {

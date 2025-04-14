@@ -3,7 +3,7 @@
 import React, { useState, useEffect, use } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
-import { Job } from "@/types/company"
+import { Job, JobApplication } from "@/types/company"
 import { dataService } from "@/lib/data-service"
 import { formatRupiah } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -59,6 +59,7 @@ export default function CompanyJobDetailPage({
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [applications, setApplications] = useState<JobApplication[]>([])
 
   useEffect(() => {
     fetchJobDetails()
@@ -80,6 +81,15 @@ export default function CompanyJobDetailPage({
       }
 
       setJob(jobData)
+
+      try {
+        const applicationsData = await dataService.getJobApplications(id)
+        setApplications(applicationsData)
+      } catch (error) {
+        console.error("Error fetching job applications:", error)
+        toast.warning("Gagal memuat data pelamar")
+        setApplications([])
+      }
     } catch (error) {
       console.error("Error fetching job details:", error)
       toast.error("Gagal memuat detail lowongan")
@@ -264,7 +274,7 @@ export default function CompanyJobDetailPage({
             </div>
 
             <div className="flex flex-col space-y-2">
-              <Button
+              {/* <Button
                 variant="outline"
                 size="sm"
                 onClick={handleEdit}
@@ -272,7 +282,7 @@ export default function CompanyJobDetailPage({
               >
                 <Edit className="h-4 w-4 mr-2" />
                 Edit
-              </Button>
+              </Button> */}
               <Button
                 variant="outline"
                 size="sm"
@@ -309,11 +319,17 @@ export default function CompanyJobDetailPage({
               <div>
                 <div className="text-sm text-gray-600">Tanggal Dibuat</div>
                 <div className="font-medium">
-                  {new Date(job.createdAt).toLocaleDateString("id-ID", {
-                    day: "numeric",
-                    month: "long",
-                    year: "numeric",
-                  })}
+                  {job.createdAt instanceof Date
+                    ? job.createdAt.toLocaleDateString("id-ID", {
+                        day: "numeric",
+                        month: "long",
+                        year: "numeric",
+                      })
+                    : job.createdAt?.toDate?.()?.toLocaleDateString("id-ID", {
+                        day: "numeric",
+                        month: "long",
+                        year: "numeric",
+                      }) ?? "-"}
                 </div>
               </div>
             </div>
@@ -321,13 +337,21 @@ export default function CompanyJobDetailPage({
             <div className="flex items-center">
               <Clock className="h-5 w-5 text-gray-500 mr-2" />
               <div>
-                <div className="text-sm text-gray-600">Ditutup Pada</div>
+                <div className="text-sm text-gray-600">Hari Sejak Dibuat</div>
                 <div className="font-medium">
-                  {new Date(job.expiresAt).toLocaleDateString("id-ID", {
-                    day: "numeric",
-                    month: "long",
-                    year: "numeric",
-                  })}
+                  {(() => {
+                    if (!job.createdAt?.toDate) return "Tanggal tidak tersedia"
+
+                    const daysAgo = Math.floor(
+                      (new Date().getTime() -
+                        job.createdAt.toDate().getTime()) /
+                        (1000 * 60 * 60 * 24)
+                    )
+
+                    if (daysAgo === 0) return "Hari ini"
+                    if (daysAgo === 1) return "Kemarin"
+                    return `${daysAgo} hari yang lalu`
+                  })()}
                 </div>
               </div>
             </div>
@@ -339,9 +363,10 @@ export default function CompanyJobDetailPage({
               className="bg-workable-blue hover:bg-workable-blue-dark flex-1"
             >
               <Users className="h-4 w-4 mr-2" />
-              Lihat Pelamar ({job.applicationsCount || 0})
+              Lihat Pelamar ({applications.length})
             </Button>
-            <Button
+
+            {/* <Button
               onClick={() => router.push(`/company/job/${id}/applicants/ats`)}
               variant="outline"
               className="border-workable-blue text-workable-blue hover:bg-workable-blue/10 flex-1"
@@ -349,7 +374,7 @@ export default function CompanyJobDetailPage({
             >
               <Users className="h-4 w-4 mr-2" />
               Cari Pelamar Terbaik (ATS)
-            </Button>
+            </Button> */}
           </div>
         </Card>
 

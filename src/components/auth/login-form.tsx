@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { useAuth } from "@/contexts/auth-context"
+import { UserRole } from "@/types/auth"
 
 const loginSchema = z.object({
   email: z.string().email({
@@ -47,8 +48,15 @@ export default function LoginForm() {
   const onSubmit = async (values: LoginFormValues) => {
     clearError()
     try {
-      await login(values.email, values.password)
+      const result = await login(values.email, values.password)
       toast.success("Login berhasil!")
+
+      // Redirect based on user role
+      if (result && result.role === UserRole.COMPANY) {
+        router.push("/company")
+      } else if (result && result.role === UserRole.JOB_SEEKER) {
+        router.push("/job-seeker")
+      }
     } catch (error: any) {
       toast.error(error.message || "Login gagal")
       console.error("Login error:", error)

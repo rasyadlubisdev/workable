@@ -2,7 +2,6 @@ import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
 import { Providers } from "./providers"
-import { AccessibilityMenu } from "@/components/common/accessibility"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -23,7 +22,6 @@ export default function RootLayout({
         <Providers>
           <div className="mx-auto max-w-md h-full min-h-screen flex flex-col overflow-hidden">
             {children}
-            <AccessibilityMenu />
           </div>
         </Providers>
       </body>

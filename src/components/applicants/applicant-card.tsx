@@ -75,7 +75,7 @@ const ApplicantCard: React.FC<ApplicantCardProps> = ({
 
   return (
     <Card className="p-4 border-t-4 border-t-blue-100">
-      <div className="flex items-center">
+      <div className="flex items-start">
         <div className="flex-shrink-0 mr-4">
           {application.jobSeeker?.profilePicture ? (
             <Image
@@ -111,7 +111,9 @@ const ApplicantCard: React.FC<ApplicantCardProps> = ({
             )}
           </div>
         </div>
+      </div>
 
+      <div className="flex">
         <div className="flex-shrink-0 ml-2 space-x-2">
           <Button
             variant="outline"

@@ -9,7 +9,7 @@ import ChatInput from "@/components/chat/chat-input"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Bot, BriefcaseIcon, FileText, HelpCircle } from "lucide-react"
-import { db } from "@/lib/firebase"
+import { db, storage } from "@/lib/firebase"
 import {
   collection,
   addDoc,
@@ -19,6 +19,8 @@ import {
   orderBy,
   serverTimestamp,
 } from "firebase/firestore"
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage"
+import { v4 as uuidv4 } from "uuid"
 import { toast } from "react-toastify"
 import { chatService } from "@/lib/chat-service"
 
@@ -116,8 +118,76 @@ export default function ChatPage() {
     }
   }
 
-  const handleSendMessage = async (message: string, attachments?: File[]) => {
+  // Upload files to Firebase Storage and return URLs
+  const uploadFilesToFirebase = async (
+    files: File[]
+  ): Promise<{ urls: string[]; fileContents: string[] }> => {
+    const uploadPromises = files.map(async (file) => {
+      try {
+        const fileId = uuidv4()
+        const fileExtension = file.name.split(".").pop()
+        const storagePath = `chat-attachments/${user?.id}/${fileId}.${fileExtension}`
+        const storageRef = ref(storage, storagePath)
+
+        // Upload the file
+        await uploadBytes(storageRef, file)
+
+        // Get the download URL
+        const downloadURL = await getDownloadURL(storageRef)
+
+        // Extract content from the file for AI processing
+        const fileContent = await extractFileContent(file)
+
+        return {
+          url: downloadURL,
+          name: file.name,
+          type: file.type,
+          content: fileContent,
+        }
+      } catch (error) {
+        console.error(`Error uploading ${file.name}:`, error)
+        throw error
+      }
+    })
+
+    const results = await Promise.all(uploadPromises)
+    return {
+      urls: results.map((r) => r.url),
+      fileContents: results.map((r) => r.content),
+    }
+  }
+
+  // Extract text content from files
+  const extractFileContent = async (file: File): Promise<string> => {
+    // For PDF files
+    if (file.type === "application/pdf") {
+      // In a real application, you would use PDF.js or a similar library
+      // This is a simplified version
+      return `[PDF Document: ${file.name}]\nSize: ${Math.round(
+        file.size / 1024
+      )} KB\nType: ${file.type}`
+    }
+    // For image files
+    else if (file.type.startsWith("image/")) {
+      return `[Image: ${file.name}]\nSize: ${Math.round(
+        file.size / 1024
+      )} KB\nType: ${file.type}`
+    }
+    // For other file types
+    else {
+      return `[File: ${file.name}]\nSize: ${Math.round(
+        file.size / 1024
+      )} KB\nType: ${file.type}`
+    }
+  }
+
+  const handleSendMessage = async (
+    message: string,
+    attachments?: File[],
+    fileContents?: string[]
+  ) => {
     if (!message.trim() && (!attachments || attachments.length === 0)) return
+
     if (!user?.id) {
       toast.error("Anda harus login terlebih dahulu")
       router.push("/auth/login")
@@ -127,34 +197,91 @@ export default function ChatPage() {
     try {
       setLoading(true)
 
+      // Handle file uploads if there are attachments
+      let uploadedAttachments: any[] = []
+      let extractedContents: string[] = fileContents || []
+
+      if (attachments && attachments.length > 0) {
+        try {
+          const { urls, fileContents: contents } = await uploadFilesToFirebase(
+            attachments
+          )
+
+          uploadedAttachments = attachments.map((file, index) => ({
+            type: file.type,
+            url: urls[index],
+            name: file.name,
+          }))
+
+          extractedContents = contents
+        } catch (error) {
+          console.error("Error uploading files:", error)
+          toast.error(
+            "Gagal mengunggah file. Proses akan dilanjutkan tanpa file."
+          )
+        }
+      }
+
+      // Create file information string for display
+      const fileInfo =
+        uploadedAttachments.length > 0
+          ? `\n\n[File terlampir: ${uploadedAttachments
+              .map((a) => a.name)
+              .join(", ")}]`
+          : ""
+
       const userMessage: Message = {
         role: "user",
-        content: message,
+        content: message + fileInfo,
         timestamp: new Date(),
+        attachments:
+          uploadedAttachments.length > 0 ? uploadedAttachments : undefined,
       }
 
       setMessages((prev) => [...prev, userMessage])
 
-      await addDoc(collection(db, "chats"), {
+      // Store message in Firebase - only include attachments if they exist
+      const messageData: any = {
         userId: user.id,
         role: "user",
-        content: message,
+        content: message + fileInfo,
         timestamp: serverTimestamp(),
-      })
+      }
 
+      // Only add attachments field if there are attachments
+      if (uploadedAttachments.length > 0) {
+        messageData.attachments = uploadedAttachments
+      }
+
+      await addDoc(collection(db, "chats"), messageData)
+
+      // Get AI response based on the topic
       let botResponse = ""
 
       if (selectedTopic === "jobs") {
-        botResponse = await chatService.getJobRecommendations(message)
+        botResponse = await chatService.getJobRecommendations(
+          message,
+          undefined, // userSkills
+          user?.jobSeekerId ? user.jobSeekerId : undefined, // userDisabilityType
+          extractedContents.length > 0 ? extractedContents : undefined
+        )
       } else if (selectedTopic === "cv") {
-        botResponse = await chatService.getCVFeedback(message)
+        botResponse = await chatService.getCVFeedback(
+          message,
+          undefined, // cvText
+          extractedContents.length > 0 ? extractedContents : undefined
+        )
       } else if (selectedTopic === "career") {
         botResponse = await chatService.getCareerAdvice(
           message,
-          user?.jobSeekerId ? user.jobSeekerId : undefined
+          user?.jobSeekerId ? user.jobSeekerId : undefined,
+          extractedContents.length > 0 ? extractedContents : undefined
         )
       } else {
-        botResponse = await chatService.getGeneralHelp(message)
+        botResponse = await chatService.getGeneralHelp(
+          message,
+          extractedContents.length > 0 ? extractedContents : undefined
+        )
       }
 
       const assistantMessage: Message = {
@@ -186,19 +313,19 @@ export default function ChatPage() {
     switch (topicId) {
       case "career":
         welcomeMessage =
-          "Silakan ceritakan latar belakang pendidikan, pengalaman kerja, keterampilan, dan minat Anda. Saya akan membantu memberikan saran karir yang sesuai."
+          "Silakan ceritakan latar belakang pendidikan, pengalaman kerja, keterampilan, dan minat Anda. Anda juga dapat mengunggah dokumen resume atau portofolio untuk saran yang lebih personal. Saya akan membantu memberikan saran karir yang sesuai."
         break
       case "cv":
         welcomeMessage =
-          "Silakan unggah CV Anda atau ceritakan tentang CV Anda, dan saya akan memberikan saran untuk meningkatkannya."
+          "Silakan unggah CV Anda atau ceritakan tentang CV Anda, dan saya akan memberikan saran untuk meningkatkannya. Jika Anda mengunggah CV, saya dapat memberikan analisis yang lebih spesifik."
         break
       case "jobs":
         welcomeMessage =
-          "Ceritakan tentang pengalaman, keterampilan, dan jenis pekerjaan yang Anda cari, dan saya akan merekomendasikan lowongan yang sesuai."
+          "Ceritakan tentang pengalaman, keterampilan, dan jenis pekerjaan yang Anda cari, dan saya akan merekomendasikan lowongan yang sesuai. Anda juga dapat mengunggah resume Anda untuk rekomendasi yang lebih akurat."
         break
       case "help":
         welcomeMessage =
-          "Apa yang ingin Anda tanyakan terkait pekerjaan atau disabilitas? Saya akan berusaha membantu Anda."
+          "Apa yang ingin Anda tanyakan terkait pekerjaan atau disabilitas? Jika Anda memiliki dokumen yang ingin Anda tanyakan, silakan unggah di sini. Saya akan berusaha membantu Anda."
         break
     }
 
@@ -221,7 +348,7 @@ export default function ChatPage() {
         <div className="bg-workable-blue p-4 text-white">
           <div className="flex items-center">
             <Bot className="h-6 w-6 mr-2" />
-            <h1 className="text-xl font-semibold">Asisten WorkAble</h1>
+            <h1 className="text-xl font-semibold">AI Asisten WorkAble</h1>
           </div>
         </div>
 

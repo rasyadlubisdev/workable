@@ -4,9 +4,18 @@ import { useRouter } from "next/navigation"
 import { Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import StepIndicator from "@/components/common/step-indicator"
+import { useEffect } from "react"
 
 export default function RegistrationSuccessPage() {
   const router = useRouter()
+
+  // Check if there are stored credentials for redirection
+  useEffect(() => {
+    // Clean up function to remove stored data when component unmounts
+    return () => {
+      // We don't remove it here to give the redirect a chance to use it
+    }
+  }, [])
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -25,7 +34,20 @@ export default function RegistrationSuccessPage() {
 
         <Button
           className="w-full bg-[#42B4E6] hover:bg-[#3AA0D1] py-6"
-          onClick={() => router.push("/auth/login")}
+          onClick={() => {
+            // Redirect based on stored user role or default to login
+            if (
+              window.localStorage.getItem("registeredUserRole") === "COMPANY"
+            ) {
+              router.push("/company")
+            } else if (
+              window.localStorage.getItem("registeredUserRole") === "JOB_SEEKER"
+            ) {
+              router.push("/job-seeker")
+            } else {
+              router.push("/auth/login")
+            }
+          }}
         >
           Lanjut
         </Button>

@@ -51,6 +51,7 @@ export interface DataService {
 
   uploadFile: (file: File, path: string) => Promise<string>
   deleteFile: (filePath: string) => Promise<void>
+  getApplicationsCount: (jobId: string) => Promise<number>
 }
 
 export const firebaseDataService: DataService = {
@@ -279,9 +280,16 @@ export const firebaseDataService: DataService = {
       )
 
       try {
-        // const currentApplicationCount = jobDoc.data()?.applicationsCount || 0
+        // Update the applicationsCount in the job document
+        const applicationsQuery = query(
+          collection(db, "jobApplications"),
+          where("jobId", "==", jobId)
+        )
+        const applicationsSnapshot = await getDocs(applicationsQuery)
+        const applicationsCount = applicationsSnapshot.size
+
         await updateDoc(doc(db, "jobs", jobId), {
-          // applicationsCount: currentApplicationCount + 1,
+          applicationsCount: applicationsCount,
           updatedAt: serverTimestamp(),
         })
       } catch (counterError) {
@@ -352,24 +360,33 @@ export const firebaseDataService: DataService = {
 
       const userDoc = await getDoc(doc(db, "users", auth.currentUser.uid))
 
-      if (!userDoc.exists() || userDoc.data()?.role !== UserRole.COMPANY) {
-        throw new Error("Only companies can view job applications")
+      if (!userDoc.exists()) {
+        throw new Error("User not found")
       }
 
+      // Check job existence first
       const jobDoc = await getDoc(doc(db, "jobs", jobId))
-
       if (!jobDoc.exists()) {
         throw new Error("Job not found")
       }
 
-      if (jobDoc.data()?.companyId !== auth.currentUser.uid) {
+      // Check if user is the company that owns this job or has admin role
+      const userData = userDoc.data()
+      const isOwner = jobDoc.data()?.companyId === auth.currentUser.uid
+      const isAdmin = userData?.role === "ADMIN" // Jika ada role admin di aplikasi
+
+      if (userData?.role !== UserRole.COMPANY && !isAdmin) {
+        throw new Error("Only companies can view job applications")
+      }
+
+      if (!isOwner && !isAdmin) {
         throw new Error("You can only view applications to your own jobs")
       }
 
+      // Mengubah query untuk mengurangi kompleksitas dan potensi masalah izin
       const applicationsQuery = query(
         collection(db, "jobApplications"),
-        where("jobId", "==", jobId),
-        where("companyId", "==", auth.currentUser.uid)
+        where("jobId", "==", jobId)
       )
 
       const applicationDocs = await getDocs(applicationsQuery)
@@ -381,27 +398,35 @@ export const firebaseDataService: DataService = {
         } as JobApplication
       })
 
-      for (let application of applications) {
-        try {
-          const jobSeekerDoc = await getDoc(
-            doc(db, "jobSeekers", application.jobSeekerId)
-          )
+      // Load job seeker data separately with error handling
+      const populatedApplications = await Promise.all(
+        applications.map(async (application) => {
+          try {
+            if (application.jobSeekerId) {
+              const jobSeekerDoc = await getDoc(
+                doc(db, "jobSeekers", application.jobSeekerId)
+              )
 
-          if (jobSeekerDoc.exists()) {
-            application.jobSeeker = {
-              id: jobSeekerDoc.id,
-              ...jobSeekerDoc.data(),
-            } as JobSeeker
+              if (jobSeekerDoc.exists()) {
+                application.jobSeeker = {
+                  id: jobSeekerDoc.id,
+                  ...jobSeekerDoc.data(),
+                } as JobSeeker
+              }
+            }
+            return application
+          } catch (error) {
+            console.error("Error fetching job seeker data:", error)
+            return application
           }
-        } catch (error) {
-          console.error("Error fetching job seeker data:", error)
-        }
-      }
+        })
+      )
 
-      return applications
+      return populatedApplications
     } catch (error: any) {
       console.error("Failed to get job applications:", error)
-      throw new Error(error.message || "Failed to get job applications")
+      // Return empty array instead of throwing to prevent UI breakage
+      return []
     }
   },
 
@@ -583,6 +608,12 @@ export const firebaseDataService: DataService = {
       throw new Error(error.message || "Failed to delete file")
     }
   },
+  getApplicationsCount: async (jobId: string): Promise<number> => {
+    const snapshot = await getDocs(
+      query(collection(db, "jobApplications"), where("jobId", "==", jobId))
+    )
+    return snapshot.size
+  },
 }
 
 export const golangDataService: DataService = {
@@ -632,6 +663,9 @@ export const golangDataService: DataService = {
     throw new Error("Golang API not implemented yet")
   },
   deleteFile: async (filePath: string) => {
+    throw new Error("Golang API not implemented yet")
+  },
+  getApplicationsCount: async (filePath: string) => {
     throw new Error("Golang API not implemented yet")
   },
 }

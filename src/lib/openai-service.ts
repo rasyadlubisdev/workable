@@ -84,7 +84,60 @@ async function simulateAIResponse(messages: ChatMessage[]): Promise<string> {
       ?.content.toLowerCase() || ""
   const systemMessage = messages.find((m) => m.role === "system")?.content || ""
 
-  if (systemMessage.includes("saran karir")) {
+  const containsFileContent =
+    lastUserMessage.includes("file yang dilampirkan") ||
+    lastUserMessage.includes("[pdf document") ||
+    lastUserMessage.includes("[image:")
+
+  if (containsFileContent) {
+    return `Terima kasih sudah mengunggah file! Saya telah menerima dan menganalisis file yang Anda kirimkan.
+
+Saya melihat bahwa file ini berisi beberapa informasi yang dapat membantu saya memberikan saran yang lebih spesifik untuk Anda. Berdasarkan isi file yang Anda unggah dan pertanyaan Anda, berikut adalah tanggapan saya:
+
+${
+  systemMessage.includes("saran karir")
+    ? `Berdasarkan informasi dalam file yang Anda unggah, saya dapat melihat beberapa keahlian dan pengalaman yang relevan. Berikut beberapa pilihan karir yang mungkin sesuai untuk Anda:
+
+1. **Pengembangan Web/Software** - Bidang teknologi menawarkan fleksibilitas bekerja jarak jauh dan aksesibilitas yang baik dengan bantuan teknologi. Keterampilan teknis yang terlihat dalam dokumen Anda menunjukkan potensi di bidang ini.
+
+2. **Content Creator/Writer** - Berdasarkan kemampuan komunikasi yang terlihat dalam dokumen, pekerjaan ini bisa dilakukan dari rumah dengan jadwal fleksibel.
+
+3. **Manajemen Proyek** - Kemampuan organisasi dan koordinasi yang tampak dalam dokumen Anda sangat berharga untuk posisi ini.
+
+Saya melihat bahwa Anda memiliki keahlian dalam [keahlian yang terlihat dalam file]. Ini sangat berharga di pasar kerja saat ini.`
+    : systemMessage.includes("CV")
+    ? `Berdasarkan CV yang Anda unggah, berikut beberapa saran untuk meningkatkannya:
+
+1. **Tambahkan ringkasan profesional yang lebih kuat** di bagian atas CV. Saya melihat bahwa CV Anda sudah memiliki informasi yang baik, tetapi ringkasan yang lebih fokus akan membuatnya lebih menarik.
+
+2. **Soroti prestasi dengan angka dan hasil konkret**. Saya melihat beberapa pengalaman kerja dalam CV Anda. Coba tambahkan hasil kuantitatif dari pekerjaan Anda, seperti "Meningkatkan efisiensi proses sebesar 25%".
+
+3. **Sesuaikan format untuk keterbacaan yang lebih baik**. Organisasi CV Anda sudah baik, tetapi dengan sedikit penyesuaian pada spasi dan penomoran, informasi akan lebih mudah dibaca oleh ATS (Applicant Tracking System).
+
+CV Anda memiliki kekuatan dalam [aspek positif dari CV], yang sangat baik untuk menarik perhatian rekruter.`
+    : systemMessage.includes("rekomendasi lowongan")
+    ? `Berdasarkan file resume yang Anda unggah, berikut adalah beberapa lowongan pekerjaan yang mungkin sesuai dengan keterampilan dan pengalaman Anda:
+
+1. [Software Engineer di PT Tech Indonesia](/job-seeker/job/j001) - Posisi ini membutuhkan keahlian teknis seperti yang tercantum dalam dokumen Anda. Lingkungan kerjanya ramah disabilitas dengan opsi remote working.
+
+2. [Content Specialist di Media Digital](/job-seeker/job/j002) - Keahlian komunikasi yang terlihat dalam dokumen Anda sangat cocok untuk posisi ini.
+
+3. [Project Coordinator](/job-seeker/job/j003) - Pengalaman organisasi dan manajemen yang tercermin dalam dokumen Anda adalah kualifikasi utama untuk posisi ini.
+
+Keahlian Anda dalam [keahlian spesifik] sangat diminati oleh perusahaan-perusahaan tersebut.`
+    : `Saya telah mempelajari dokumen yang Anda unggah. Berdasarkan informasi tersebut, berikut beberapa poin penting yang dapat saya simpulkan:
+
+1. Anda memiliki pengalaman dan keahlian yang berharga, terutama di bidang [perkiraan bidang berdasarkan konteks].
+
+2. Dokumen ini memberikan konteks yang membantu saya memahami situasi Anda lebih baik.
+
+3. Berdasarkan informasi ini, saya sarankan untuk fokus pada [saran umum berdasarkan dokumen].
+
+Apakah ada aspek spesifik dari dokumen ini yang ingin Anda bahas lebih lanjut? Saya siap membantu memberikan saran yang lebih detail.`
+}
+
+Apakah ada yang ingin Anda tanyakan lebih lanjut terkait file yang Anda unggah?`
+  } else if (systemMessage.includes("saran karir")) {
     return `Berdasarkan informasi yang Anda berikan, berikut adalah saran karir yang sesuai untuk penyandang disabilitas:
 
 1. **Pengembangan Web/Software** - Bidang teknologi menawarkan fleksibilitas bekerja jarak jauh dan aksesibilitas yang baik dengan bantuan teknologi. Banyak penyandang disabilitas sukses di bidang ini.

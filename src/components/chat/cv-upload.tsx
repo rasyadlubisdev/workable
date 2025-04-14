@@ -49,30 +49,24 @@ const CVUpload: React.FC<CVUploadProps> = ({ onFileUploaded }) => {
     setUploadProgress(0)
 
     try {
-      // Simulasi progress upload
       const progressInterval = setInterval(() => {
         setUploadProgress((prev) => Math.min(prev + 10, 90))
       }, 200)
 
-      // Generate nama file unik dengan UUID
       const fileId = uuidv4()
       const fileExtension = file.name.split(".").pop()
       const fileRef = ref(storage, `cv-uploads/${fileId}.${fileExtension}`)
 
-      // Upload file ke Firebase Storage
       await uploadBytes(fileRef, file)
       const downloadURL = await getDownloadURL(fileRef)
 
-      // Selesai upload
       clearInterval(progressInterval)
-      setUploadProgress(100)
 
+      setUploadProgress(100)
       setExtractingText(true)
 
-      // Ekstrak teks dari file yang diupload
       const extractedText = await extractTextFromFile(file)
 
-      // Panggil callback dengan URL dan teks hasil ekstraksi
       onFileUploaded(downloadURL, extractedText)
 
       toast.success("CV berhasil diunggah dan dianalisis!")
@@ -87,15 +81,11 @@ const CVUpload: React.FC<CVUploadProps> = ({ onFileUploaded }) => {
     }
   }
 
-  // Fungsi untuk ekstrak teks dari file yang diupload
   const extractTextFromFile = async (file: File): Promise<string> => {
     try {
-      // Jika file adalah PDF, gunakan PDF.js atau library lain untuk ekstraksi
       if (file.type === "application/pdf") {
         return await extractTextFromPDF(file)
-      }
-      // Jika file adalah gambar, gunakan OCR (Optical Character Recognition)
-      else if (file.type.startsWith("image/")) {
+      } else if (file.type.startsWith("image/")) {
         return await extractTextFromImage(file)
       }
 
@@ -106,7 +96,6 @@ const CVUpload: React.FC<CVUploadProps> = ({ onFileUploaded }) => {
         "Ekstraksi teks tidak sempurna, analisis mungkin kurang akurat"
       )
 
-      // Jika ekstraksi gagal, gunakan nama file dan beberapa metadata sebagai fallback
       return `
 File CV: ${file.name}
 Tipe: ${file.type}
@@ -115,31 +104,20 @@ Ukuran: ${(file.size / 1024).toFixed(2)} KB
     }
   }
 
-  // Ekstraksi teks dari PDF menggunakan PDF.js (versi sederhana)
   const extractTextFromPDF = async (file: File): Promise<string> => {
-    // Di implementasi nyata, gunakan PDFjs atau library serupa
-
-    // Simulasi proses ekstraksi
     await new Promise((resolve) => setTimeout(resolve, 1000))
 
-    // Baca file sebagai ArrayBuffer
     const arrayBuffer = await file.arrayBuffer()
-
-    // Normalisasi ke string dengan encoding UTF-8
-    // (ini hanya simulasi, tidak akan bekerja dengan benar untuk file PDF asli)
     const textDecoder = new TextDecoder("utf-8")
     let extractedText = ""
 
     try {
-      // Coba baca beberapa byte awal untuk memeriksa teks yang bisa dibaca
       const bytes = new Uint8Array(arrayBuffer.slice(0, 2000))
       const partialText = textDecoder.decode(bytes)
 
-      // Cek jika ada teks yang bisa dibaca
-      if (partialText.match(/[a-zA-Z]/g)?.length > 50) {
+      if ((partialText.match(/[a-zA-Z]/g) || []).length > 50) {
         extractedText = partialText
       } else {
-        // Jika tidak banyak teks yang bisa dibaca, berikan metadata saja
         extractedText = `
 Metadata file: ${file.name}
 Jenis: PDF Document
@@ -152,11 +130,6 @@ Terakhir dimodifikasi: ${new Date(file.lastModified).toLocaleString()}
       extractedText = `Metadata file: ${file.name}`
     }
 
-    // Di implementasi nyata, gunakan library PDF.js:
-    // const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise
-    // Kemudian ekstrak teks dari setiap halaman
-
-    // Jika ekstraksi teks gagal, berikan info file
     if (!extractedText.trim()) {
       extractedText = `File CV PDF: ${file.name} (${(file.size / 1024).toFixed(
         2
@@ -166,24 +139,9 @@ Terakhir dimodifikasi: ${new Date(file.lastModified).toLocaleString()}
     return extractedText
   }
 
-  // Ekstraksi teks dari gambar menggunakan OCR (versi sederhana)
   const extractTextFromImage = async (file: File): Promise<string> => {
-    // Di implementasi nyata, gunakan Tesseract.js atau API OCR
-
-    // Simulasi proses OCR
     await new Promise((resolve) => setTimeout(resolve, 1000))
-
-    // Baca gambar sebagai URL
     const imageUrl = URL.createObjectURL(file)
-
-    // Di implementasi nyata:
-    // const worker = createWorker()
-    // await worker.load()
-    // await worker.loadLanguage('eng')
-    // await worker.initialize('eng')
-    // const { data: { text } } = await worker.recognize(imageUrl)
-
-    // Dummy ekstraksi teks
     const extractedText = `
 File CV Gambar: ${file.name}
 Format: ${file.type}
@@ -198,7 +156,6 @@ Ekstraksi OCR menghasilkan:
 - Keterampilan terdeteksi
     `
 
-    // Bersihkan URL setelah digunakan
     URL.revokeObjectURL(imageUrl)
 
     return extractedText

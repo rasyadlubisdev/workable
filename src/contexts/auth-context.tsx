@@ -15,7 +15,7 @@ interface AuthState {
 }
 
 interface AuthContextType extends AuthState {
-  login: (email: string, password: string) => Promise<void>
+  login: (email: string, password: string) => Promise<any>
   registerCompany: (userData: any) => Promise<void>
   registerJobSeeker: (userData: any) => Promise<void>
   logout: () => Promise<void>
@@ -108,7 +108,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (email: string, password: string) => {
     try {
       setState({ ...state, loading: true, error: null })
-      await authService.login(email, password)
+      const result = await authService.login(email, password)
+
+      // Return result for redirection
+      return result
     } catch (error: any) {
       setState({
         ...state,
@@ -122,8 +125,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const registerCompany = async (userData: any) => {
     try {
       setState({ ...state, loading: true, error: null })
-      await authService.registerCompany(userData)
+      const result = await authService.registerCompany(userData)
+
+      // Store user role in localStorage for redirection after success page
+      localStorage.setItem("registeredUserRole", "COMPANY")
+
       router.push("/auth/success")
+      return result
     } catch (error: any) {
       setState({
         ...state,
@@ -137,8 +145,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const registerJobSeeker = async (userData: any) => {
     try {
       setState({ ...state, loading: true, error: null })
-      await authService.registerJobSeeker(userData)
+      const result = await authService.registerJobSeeker(userData)
+
+      // Store user role in localStorage for redirection after success page
+      localStorage.setItem("registeredUserRole", "JOB_SEEKER")
+
       router.push("/auth/success")
+      return result
     } catch (error: any) {
       setState({
         ...state,
