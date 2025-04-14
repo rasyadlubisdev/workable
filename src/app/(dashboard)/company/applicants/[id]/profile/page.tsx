@@ -21,8 +21,10 @@ interface ApplicantProfilePageProps {
 
 export default function ApplicantProfilePage({
   params,
-}: ApplicantProfilePageProps) {
-  const { id: applicationId } = use(params)
+}: {
+  params: Promise<{ id: string }>
+}) {
+  const { id } = use(params)
   const router = useRouter()
   const { user } = useAuth()
 
@@ -33,7 +35,7 @@ export default function ApplicantProfilePage({
     if (user?.id) {
       fetchApplicationDetails()
     }
-  }, [user, applicationId])
+  }, [user, id])
 
   const fetchApplicationDetails = async () => {
     try {
@@ -48,9 +50,7 @@ export default function ApplicantProfilePage({
         allApplications = [...allApplications, ...jobApplications]
       }
 
-      const foundApplication = allApplications.find(
-        (app) => app.id === applicationId
-      )
+      const foundApplication = allApplications.find((app) => app.id === id)
 
       if (!foundApplication) {
         toast.error("Pelamar tidak ditemukan")
@@ -77,7 +77,7 @@ export default function ApplicantProfilePage({
 
   const handleStatusChange = async (newStatus: JobApplication["status"]) => {
     try {
-      await dataService.updateJobApplication(applicationId, newStatus)
+      await dataService.updateJobApplication(id, newStatus)
 
       setApplication((prev) => {
         if (prev) {
@@ -208,7 +208,7 @@ export default function ApplicantProfilePage({
                 variant="outline"
                 className="text-workable-blue border-workable-blue"
                 onClick={() =>
-                  router.push(`/company/applicants/${applicationId}/cv`)
+                  router.push(`/company/applicants/${id}/cv`)
                 }
               >
                 <span className="font-bold">CV</span>
@@ -387,9 +387,7 @@ export default function ApplicantProfilePage({
         <div className="flex justify-between mt-6">
           <Button
             variant="outline"
-            onClick={() =>
-              router.push(`/company/applicants/${applicationId}/ai-analysis`)
-            }
+            onClick={() => router.push(`/company/applicants/${id}/ai-analysis`)}
             className="text-workable-blue border-workable-blue"
           >
             Lihat Analisis AI
