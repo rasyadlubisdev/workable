@@ -3,6 +3,7 @@
 ## Project & Team Information
 
 **Team**: TeeQobez
+
 **Tagline**: Platform digital berbasis Natural Language Processing dan Computer Vision untuk meningkatkan akses kerja bagi penyandang disabilitas.
 
 ## 🚀 Deskripsi Singkat
