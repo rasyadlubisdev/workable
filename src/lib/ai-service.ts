@@ -6,7 +6,7 @@ import { JobApplication } from "@/types/company"
 import { Job } from "@/types/company"
 
 const model = new ChatOpenAI({
-  modelName: "gpt-4o",
+  modelName: "gpt-4o-mini",
   temperature: 0,
   openAIApiKey: process.env.NEXT_PUBLIC_OPENAI_API_KEY,
 })
