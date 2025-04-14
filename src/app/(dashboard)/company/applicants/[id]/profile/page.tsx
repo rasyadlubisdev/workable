@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, use } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 import { ArrowLeft, MessageSquare, Download } from "lucide-react"
@@ -22,7 +22,7 @@ interface ApplicantProfilePageProps {
 export default function ApplicantProfilePage({
   params,
 }: ApplicantProfilePageProps) {
-  const { id: applicationId } = params
+  const { id: applicationId } = use(params)
   const router = useRouter()
   const { user } = useAuth()
 
@@ -193,13 +193,18 @@ export default function ApplicantProfilePage({
               <Button
                 variant="outline"
                 className="text-workable-blue border-workable-blue"
-                onClick={() => router.push(`/company/chat/${applicationId}`)}
+                onClick={() => {
+                  const rawPhone = jobSeeker.phone || ""
+                  const formattedPhone = rawPhone.replace(/^0/, "62")
+                  const waLink = `https://wa.me/${formattedPhone}`
+                  window.open(waLink, "_blank")
+                }}
               >
-                <MessageSquare className="h-4 w-4 mr-2" />
-                Chat
+                <MessageSquare className="h-4 w-4" />
+                {/* Chat */}
               </Button>
 
-              <Button
+              {/* <Button
                 variant="outline"
                 className="text-workable-blue border-workable-blue"
                 onClick={() =>
@@ -207,7 +212,7 @@ export default function ApplicantProfilePage({
                 }
               >
                 <span className="font-bold">CV</span>
-              </Button>
+              </Button> */}
             </div>
           </div>
         </Card>
@@ -293,15 +298,14 @@ export default function ApplicantProfilePage({
               <div>
                 <p className="text-sm text-gray-500">Tanggal Melamar</p>
                 <p className="font-medium">
-                  {application.appliedAt
-                    ? new Date(application.appliedAt).toLocaleDateString(
-                        "id-ID",
-                        {
+                  {application.appliedAt?.toDate
+                    ? application.appliedAt
+                        .toDate()
+                        .toLocaleDateString("id-ID", {
                           day: "numeric",
                           month: "long",
                           year: "numeric",
-                        }
-                      )
+                        })
                     : "-"}
                 </p>
               </div>
