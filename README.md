@@ -73,8 +73,8 @@ Penyandang disabilitas di Indonesia menghadapi berbagai hambatan dalam mengakses
 
 ```bash
 # Mengkloning repositori
-git clone https://github.com/yourusername/workable-findit.git
-cd workable-findit
+git clone https://github.com/yourusername/workable.git
+cd workable
 
 # Instalasi dependencies
 npm install
